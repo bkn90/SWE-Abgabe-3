@@ -124,7 +124,7 @@ export class BuchWriteService {
     // eslint-disable-next-line max-params
     async addFile(
         buchId: number,
-        data: Uint8Array<ArrayBufferLike>,
+        data: Uint8Array,
         filename: string,
         size: number,
     ): Promise<Readonly<BuchFile> | undefined> {
@@ -140,7 +140,7 @@ export class BuchWriteService {
         let buchFileCreated: BuchFileCreated | undefined;
         await this.#prisma.$transaction(async (tx) => {
             // Buch ermitteln, falls vorhanden
-            const buch = tx.buch.findUnique({
+            const buch = await tx.buch.findUnique({
                 where: { id: buchId },
             });
             if (buch === null) {
@@ -153,13 +153,18 @@ export class BuchWriteService {
             // evtl. vorhandene Datei löschen
             await tx.buchFile.deleteMany({ where: { buchId } });
 
-            const fileType = await fileTypeFromBuffer(data);
+            const bytes =
+                data.buffer instanceof ArrayBuffer
+                    ? new Uint8Array(data.buffer)
+                    : Uint8Array.from(data);
+
+            const fileType = await fileTypeFromBuffer(bytes);
             const mimetype = fileType?.mime ?? null;
             this.#logger.debug('addFile: mimetype=%s', mimetype ?? 'undefined');
 
             const buchFile: BuchFileCreate = {
                 filename,
-                data,
+                data: bytes,
                 mimetype,
                 buchId,
             };
