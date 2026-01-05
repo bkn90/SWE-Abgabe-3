@@ -13,17 +13,13 @@
 -- You should have received a copy of the GNU General Public License
 -- along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
--- https://www.postgresql.org/docs/current/sql-createuser.html
 -- https://www.postgresql.org/docs/current/sql-createrole.html
-CREATE USER buch PASSWORD 'p';
+CREATE ROLE buch LOGIN PASSWORD 'p';
 
 -- https://www.postgresql.org/docs/current/sql-createdatabase.html
 CREATE DATABASE buch;
 
--- https://www.postgresql.org/docs/current/role-attributes.html
--- https://www.postgresql.org/docs/current/ddl-priv.html
--- https://www.postgresql.org/docs/current/sql-grant.html
 GRANT ALL ON DATABASE buch TO buch;
 
--- https://www.postgresql.org/docs/current/sql-createtablespace.html
+-- https://www.postgresql.org/docs/10/sql-createtablespace.html
 CREATE TABLESPACE buchspace OWNER buch LOCATION '/var/lib/postgresql/tablespace/buch';

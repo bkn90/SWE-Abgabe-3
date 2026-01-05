@@ -1,14 +1,18 @@
 // @ts-check
+// @ts-expect-error keine .d.ts-Datei
 import comments from '@eslint-community/eslint-plugin-eslint-comments/configs';
 import eslint from '@eslint/js';
-import { defineConfig } from 'eslint/config';
 import graphql from '@graphql-eslint/eslint-plugin';
 import stylistic from '@stylistic/eslint-plugin';
 import vitest from '@vitest/eslint-plugin';
+// alternativ: https://github.com/un-ts/eslint-plugin-import-x
 import importPlugin from 'eslint-plugin-import';
 import nodePlugin from 'eslint-plugin-n';
 import packageJson from 'eslint-plugin-package-json';
+import { defineConfig } from 'eslint/config';
+// @ts-expect-error keine .d.ts-Datei
 import preferArrow from 'eslint-plugin-prefer-arrow';
+// @ts-expect-error keine .d.ts-Datei
 import promise from 'eslint-plugin-promise';
 import regexp from 'eslint-plugin-regexp';
 import security from 'eslint-plugin-security';
@@ -19,6 +23,7 @@ import tseslint from 'typescript-eslint';
 
 // https://eslint.org/docs/latest/use/getting-started#manual-set-up
 // https://typescript-eslint.io/troubleshooting/typed-linting/performance#eslint-plugin-prettier
+// "jiti" ist erforderlich fuer TypeScript als Sprache fuer die Konfigurationsdatei
 export default defineConfig(
     {
         files: ['src/*.ts'],
@@ -71,7 +76,7 @@ export default defineConfig(
         },
 
         settings: {
-            'import/node-version': '24.2.0',
+            'import/node-version': '24.10.0',
         },
 
         rules: {
@@ -165,6 +170,7 @@ export default defineConfig(
             '@typescript-eslint/no-unnecessary-qualifier': 'error',
             '@typescript-eslint/no-unnecessary-type-conversion': 'error',
             '@typescript-eslint/no-unsafe-member-access': 'off',
+            '@typescript-eslint/no-unused-private-class-members': 'error',
             '@typescript-eslint/no-unused-vars': [
                 'off',
                 {
@@ -604,12 +610,15 @@ export default defineConfig(
     // -------------------------------------------------------------------------
     {
         files: ['package.json'],
-        extends: [packageJson.configs.recommended],
+        extends: [
+            packageJson.configs.recommended,
+            packageJson.configs.stylistic,
+        ],
         rules: {
             'package-json/sort-collections': [
-		        'error',
-		        ['dependencies', 'devDependencies']
-	        ]
-        }
+                'error',
+                ['dependencies', 'devDependencies'],
+            ],
+        },
     },
 );

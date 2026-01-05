@@ -28,6 +28,7 @@
 ## Inhalt
 
 - [Installation und Voraussetzungen](#installation-und-voraussetzungen)
+  - [Powershell bei Windows](#powershell-bei-windows)
   - [Basis-Software](#basis-software)
   - [Umgebungsvariable](#umgebungsvariable)
   - [Node und npm überprüfen](#node-und-npm-überprüfen)
@@ -44,7 +45,29 @@
 - [Aufruf der Beispiele](#aufruf-der-beispiele)
 - [Prisma Studio](#prisma-studio)
 
+**BEACHTE: Prisma 7.0.0 kann nicht mit pnpm verwendet werden** https://github.com/prisma/prisma/issues/28581.
+
 ## Installation und Voraussetzungen
+
+### Powershell bei Windows
+
+Überprüfung, ob sich Powershell-Skripte starten lassen:
+
+```powershell
+    Get-ExecutionPolicy -list
+```
+
+`CurrentUser` muss _zumindest_ das Recht `RemoteSigned` haben. Ggf. muss dieses
+Ausführungsrecht gesetzt werden:
+
+```powershell
+    Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
+
+Ggf. genügt `RemoteSigned` nicht und man muss `Bypass` verwenden, sodass
+keine Ausführung blockiert wird und dabei keine Warnings ausgegeben werden.
+Das hängt von der eigenen Windows-Installation ab. Details siehe
+https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.security/set-executionpolicy?view=powershell-7.2
 
 ### Basis-Software
 
@@ -143,8 +166,8 @@ Das aktuelle Image für _PostgreSQL_ wird von _Docker Hub_ heruntergeladen:
 
 Die DB mit _PostgreSQL_ wird gemäß `.extras\compose\postgres\ReadMe.md` aufgesetzt.
 
-Bei Linux und macOS sind in `.extras\compose\postgres\compose.yaml` Anpassungen
-für die Volumes notwendig. Für das Mounting sind folgende Verzeichnisse notwendig:
+Bei macOS und Linux sind in `.extras\compose\postgres\compose.yaml` Anpassungen
+für die Volumes notwendig, um für das Mounting folgende Verzeichnisse zu haben:
 
 - csv
 - data
@@ -153,7 +176,9 @@ für die Volumes notwendig. Für das Mounting sind folgende Verzeichnisse notwen
 - tablespace
 - tls
 
-Für csv, sql und tls gibt es in ILIAS die ZIP-Datei `postgres.linux-macos.zip.zip`.
+Für csv, sql und tls gibt es in ILIAS die ZIP-Datei `postgres.macos-linux.zip.zip`.
+Die anderen Verzeichnisse (data, run und tablespace) müssen lediglich als zunächst
+leere Verzeichnisse existieren.
 
 ---
 
@@ -164,12 +189,43 @@ Es geht weiter im Abschnitt [Code-Generierung für den DB-Client](#code-generier
 
 ### Initiales Schema erstellen
 
-Zunächst muss man ein neues Prisma-Schema erstellen, d.h. im Verzeichnis `prisma`
-wird die Datei `schema.prisma` angelegt:
+Um ein neues Prisma-Schema zu erstellen, muss die Umgebungsvariable `DATABASE_URL`
+gesetzt sein:
 
 ```shell
-    pnpx prisma init
+    # Windows:
+    $env:DATABASE_URL='postgresql://buch:p@localhost/buch?schema=buch&connection_limit=10&sslnegotiation=direct?sslcert=../src/config/resources/postgresql/certificate.cer'
+
+    # macOS:
+    DATABASE_URL='postgresql://buch:p@localhost/buch?schema=buch&connection_limit=10&sslnegotiation=direct?sslcert=../src/config/resources/postgresql/certificate.cer'
 ```
+
+Dadurch ist folgendes konfiguriert:
+
+- Benutzername: `buch`
+- Passwort: `p`
+- DB-Host: `localhost`
+- DB-Name: `buch`
+- Schema: `buch`
+- Größe des Verbindungs-Pools: max. `10` Verbindungen
+- SSL: durch die Zertifikatsdatei `certificate.cer` im Verzeichnis `src\config\resources\postgresql`
+
+Nun kann man ein neues Prisma-Schema erstellen, d.h. im Verzeichnis `prisma`
+wird die Datei `schema.prisma` angelegt. Das Verzeichnis `prisma` darf dabei
+noch nicht existieren.
+
+```shell
+    pnpm prisma init
+```
+
+Dabei werden folgende Dateien generiert:
+
+- `prisma.config.ts` siehe https://github.com/prisma/prisma/releases/tag/6.18.0
+- `prisma\schema.prisma`
+
+In der Datei `.env` wurde `DATABASE_URL` als Umgebungsvariable eingetragen.
+Diesen Wert überschreibt man mit dem Wert, den man zuvor in der Shell gesetzt
+hatte (s.o.).
 
 ### Models aus einer bestehenden DB generieren
 
@@ -182,24 +238,11 @@ existierenden DB gestartet sein:
     docker compose up
 ```
 
-Damit sich der Prisma-Client für die Generierung mit der DB verbinden kann,
-muss die Umgebungsvariable `DATABASE_URL` in der Datei `.env` gesetzt sein, z.B.
-`"postgresql://buch:p@localhost/buch?schema=buch&connection_limit=10&sslnegotiation=direct?sslcert=../src/config/resources/postgresql/certificate.cer"`.
-Dadurch ist folgendes konfiguriert:
-
-- Benutzername: `buch`
-- Passwort: `p`
-- DB-Host: `localhost`
-- DB-Name: `buch`
-- Schema: `buch`
-- Größe des Verbindungs-Pools: max. `10` Verbindungen
-- SSL: durch die Zertifikatsdatei `certificate.cer` im Verzeichnis `src\config\resources\postgresql`
-
 Nun wird die Generierung durchgeführt, so dass die Datei `prisma\schema.prisma`
 um die Models für das spätere OR-Mapping ergänzt wird:
 
 ```shell
-    pnpx prisma db pull
+    pnpm prisma db pull
 ```
 
 Warnungen, dass _Check-Constraints_ nicht unterstützt werden, können ignoriert werden,
@@ -237,7 +280,6 @@ als provider für den Generator verwendet wird.
   }
   datasource db {
     provider = "postgresql"
-    url      = env("DATABASE_URL")
     schemas  = ["buch"]
   }
 ```
@@ -251,7 +293,7 @@ künftige OR-Mapping. Mit diesem Schema kann nun der Prisma-Client generiert
 werden, der später für das OR-Mapping in TypeScript verwendet wird:
 
 ```shell
-    pnpx prisma generate
+    pnpm prisma generate
 ```
 
 ---
@@ -294,3 +336,22 @@ als DB-Werkzeug verwendet werden:
 ```shell
     pnpx prisma studio
 ```
+
+## Ausblick für Nest
+
+Nachdem das Prisma-Schema in der Datei `prisma/schema.prisma` erstellt wurde,
+sind für das _Nest_-basierte Projekt folgende Anpassungen notwendig:
+
+- In `tsconfig.json`, weil beim direkten Arbeiten mit _Node_ das Feature _Type
+  Stripping_ genutzt wurde, d.h. Node wurde aufgerufen und die Typen von
+  _TypeScript_ wurden zur Laufzeit einfach weggelassen. _Nest_ verwendet dagegen
+  _übersetzten_ Code, d.h. _JavaScript_.
+  - bei der Option `emitDecoratorMetadata` den Kommentar entfernen
+  - die Option `noEmit` auskommentieren
+  - die Option `allowImportingTsExtensions` auskommentieren
+- Der Prisma-Client muss deshalb auch neu generiert werden, d.h.
+  - das Verzeichnis `src\generated` wird gelöscht und
+  - `pnpx prisma generate` wird in der PowerShell aufgerufen.
+- Die bisherigen Beispieldateien `beispiele.mts` und `beispiele-write.mts`
+  für den "alten" Prisma-Client können deshalb nicht mehr funktionieren, weshalb
+  man sie am einfachsten aus dem Projekt löscht.

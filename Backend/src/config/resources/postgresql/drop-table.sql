@@ -17,8 +17,6 @@
 -- docker compose exec db bash
 -- psql --dbname=buch --username=buch --file=/sql/drop-table.sql
 
-set search_path to 'buch';
-
 -- https://www.postgresql.org/docs/current/sql-droptable.html
 
 DROP TABLE IF EXISTS buch_file CASCADE;

@@ -95,7 +95,7 @@ export class BuchService {
     // https://2ality.com/2015/01/es6-destructuring.html#simulating-named-parameters-in-javascript
     async findById({
         id,
-        mitAbbildungen = false,
+        mitAbbildungen,
     }: FindByIdParams): Promise<Readonly<BuchMitTitelUndAbbildungen>> {
         this.#logger.debug('findById: id=%d', id);
 
@@ -141,7 +141,7 @@ export class BuchService {
             buchFile.id,
             buchFile.data.byteLength,
             buchFile.filename,
-            buchFile.mimetype ?? 'undefined',
+            buchFile.mimetype,
             buchFile.buchId,
         );
 
@@ -270,10 +270,7 @@ export class BuchService {
 
     #checkEnums(suchparameter: Suchparameter) {
         const { art } = suchparameter;
-        this.#logger.debug(
-            '#checkEnums: Suchparameter "art=%s"',
-            art ?? 'undefined',
-        );
+        this.#logger.debug('#checkEnums: Suchparameter "art=%s"', art);
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         return (
             art === undefined ||

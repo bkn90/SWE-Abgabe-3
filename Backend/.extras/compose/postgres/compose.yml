@@ -24,7 +24,7 @@
 services:
   db:
     # https://github.com/docker-library/postgres/blob/master/18/trixie/Dockerfile
-    image: postgres:18.0-trixie
+    image: postgres:18.1-trixie
     ports:
       - published: 5432
         target: 5432
@@ -59,7 +59,7 @@ services:
         # .s.PGSQL.5432.lock
         target: /var/run/postgresql
       - type: bind
-        source: C:/Zimmermann/volumes/postgres/csv
+        source: C:/Zimmermann/volumes/postgres/csv/buch
         target: /csv
         read_only: true
       - type: bind
@@ -78,9 +78,6 @@ services:
     user: "postgres:postgres"
     hostname: postgres
     container_name: postgres
-    security_opt:
-      - label:user:postgres
-      - no-new-privileges:true
     # https://docs.docker.com/reference/compose-file/services/#cap_drop
     # https://man7.org/linux/man-pages/man7/capabilities.7.html
     cap_drop: [ALL]

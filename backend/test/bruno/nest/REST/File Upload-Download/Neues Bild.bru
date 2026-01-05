@@ -1,0 +1,63 @@
+meta {
+  name: Neues Bild
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{restUrl}}/:id
+  body: multipartForm
+  auth: bearer
+}
+
+params:path {
+  id: 1
+}
+
+headers {
+  ~: 
+}
+
+auth:bearer {
+  token: {{TOKEN}}
+}
+
+body:multipart-form {
+  file: @file(logo.png)
+}
+
+assert {
+  res.status: eq 204
+  res.headers.location: matches \/rest\/file\/[1-9]\d*
+  res.body: isString
+  res.body: isEmpty
+}
+
+script:pre-request {
+  const axios = require('axios');
+  
+  // "Developer Mode" statt "Safe" erforderlich
+  const https = require('https');
+  const httpsAgent = new https.Agent({
+   rejectUnauthorized: false,
+  });
+  
+  const tokenUrl = bru.getCollectionVar('tokenUrl');
+  const username = bru.getEnvVar('username');
+  const password = bru.getEnvVar('password');
+  // https://axios-http.com/docs/post_example
+  let response = await axios.post(
+    tokenUrl,
+    { username, password },
+    // https://axios-http.com/docs/req_config
+    { httpsAgent },
+  );
+  const token = response.data.access_token;
+  console.log(`token=${token}`)
+  bru.setVar('TOKEN', token);
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

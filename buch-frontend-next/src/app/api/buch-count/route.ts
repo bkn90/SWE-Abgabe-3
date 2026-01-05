@@ -1,49 +1,13 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from "next/server";
 import { Agent } from "undici";
+import { cookies } from "next/headers";
 
 type FetchInitWithDispatcher = RequestInit & { dispatcher?: Agent };
 
 const insecureDispatcher = new Agent({
   connect: { rejectUnauthorized: false }, // NUR DEV
 });
-
-export async function GET() {
-  const baseUrl = process.env.API_BASE_URL;
-  if (!baseUrl) {
-    return NextResponse.json(
-      { ok: false, error: "API_BASE_URL fehlt" },
-      { status: 500 }
-    );
-  }
-
-  const urlObj = new URL(`${baseUrl}/rest`);
-  urlObj.searchParams.set("only", "count");
-  const url = urlObj.toString();
-
-  try {
-    const init: FetchInitWithDispatcher = {
-      cache: "no-store",
-      headers: { Accept: "application/json" },
-    };
-
-    if (baseUrl.startsWith("https://")) {
-      init.dispatcher = insecureDispatcher;
-    }
-
-    const r = await fetch(url, init);
-    const text = await r.text();
-
-    return NextResponse.json(
-      { ok: r.ok, status: r.status, url, body: safeJson(text), raw: text },
-      { status: r.ok ? 200 : r.status }
-    );
-  } catch (e: unknown) {
-    return NextResponse.json(
-      { ok: false, status: 500, url, error: getErrorMessage(e) },
-      { status: 500 }
-    );
-  }
-}
 
 function safeJson(text: string) {
   try {
@@ -53,8 +17,54 @@ function safeJson(text: string) {
   }
 }
 
-function getErrorMessage(err: unknown): string {
-  if (err instanceof Error) return `${err.name}: ${err.message}`;
-  if (typeof err === "string") return err;
-  return "Unbekannter Fehler";
+export async function GET(req: Request) {
+  const baseUrl = process.env.API_BASE_URL;
+  if (!baseUrl) {
+    return NextResponse.json(
+      { ok: false, status: 500, body: "API_BASE_URL fehlt" },
+      { status: 500 }
+    );
+  }
+
+  // Auth weitergeben (wenn vorhanden)
+  const authFromReq = req.headers.get("authorization");
+  const cookieToken = (await cookies()).get("access_token")?.value;
+  const auth = authFromReq ?? (cookieToken ? `Bearer ${cookieToken}` : undefined);
+
+  // Query: hol nur IDs (klein) und zähle im Frontend
+  const query = /* GraphQL */ `
+    query BuchCount {
+      buecher {
+        id
+      }
+    }
+  `;
+
+  const res = await fetch(`${baseUrl}/graphql`, {
+    method: "POST",
+    cache: "no-store",
+    dispatcher: insecureDispatcher,
+    headers: {
+      "content-type": "application/json",
+      ...(auth ? { authorization: auth } : {}),
+    },
+    body: JSON.stringify({ query, variables: {} }),
+  } as FetchInitWithDispatcher);
+
+  const text = await res.text();
+  const body = safeJson(text);
+
+  // Wenn GraphQL Errors -> direkt zurück
+  if (!res.ok) {
+    return NextResponse.json({ ok: false, status: res.status, body }, { status: 200 });
+  }
+
+  // Erwartet: { data: { buecher: [{id}, ...] } }
+  const list = (body as any)?.data?.buecher;
+  const count = Array.isArray(list) ? list.length : null;
+
+  return NextResponse.json(
+    { ok: true, status: res.status, body: { count, raw: body } },
+    { status: 200 }
+  );
 }

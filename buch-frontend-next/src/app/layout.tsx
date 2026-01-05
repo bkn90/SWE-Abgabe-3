@@ -1,20 +1,17 @@
 import type { Metadata } from "next";
-import { Chakra } from "../providers/Chakra";
+import { Providers } from "@/components/Providers";
 
 export const metadata: Metadata = {
   title: "Buch Frontend",
-  description: "Next.js + Chakra UI",
 };
 
 export default function RootLayout({
   children,
-}: {
-  children: React.ReactNode;
-}) {
+}: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="de">
       <body>
-        <Chakra>{children}</Chakra>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );
