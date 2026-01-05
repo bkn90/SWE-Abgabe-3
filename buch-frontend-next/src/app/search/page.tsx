@@ -31,7 +31,7 @@ type Buch = {
   homepage?: string | null;
   schlagwoerter?: string[] | null;
   titel?: Titel | null;
-  rabatt?: number | null;
+  rabatt?: string | null;
   version?: number | null;
 };
 
@@ -45,36 +45,30 @@ type SuchparameterInput = {
 
 type BuecherQueryData = { buecher: Buch[] };
 
-// ✅ WICHTIG: kein `| null` mehr, damit wir nicht aus Versehen null senden
+// Wichtig: kein null senden
 type BuecherQueryVars = { suchparameter?: SuchparameterInput };
 
 const PAGE_SIZE = 5;
 
-// ⚠️ Passe diese Werte an dein Enum Art im Backend an
-const ART_OPTIONS = ["", "HARDCOVER", "PAPERBACK", "EBOOK"];
-
+// "" = Alle
+const ART_OPTIONS = ["", "EPUB", "HARDCOVER", "PAPERBACK"];
 const Select = chakra("select");
+
+const INITIAL_FILTER = {
+  titel: "",
+  isbn: "",
+  rating: "",
+  art: "",
+  lieferbar: false,
+};
 
 export default function SearchPage() {
   const [page, setPage] = useState(1);
 
-  // Form-State (damit Query-Variablen stabil sind)
-  const [filter, setFilter] = useState<{
-    titel: string;
-    isbn: string;
-    rating: string;
-    art: string;
-    lieferbar: boolean;
-  }>({
-    titel: "",
-    isbn: "",
-    rating: "",
-    art: "",
-    lieferbar: false,
-  });
+  // Controlled form state
+  const [filter, setFilter] = useState(INITIAL_FILTER);
 
-  // ✅ Suchparameter bauen, aber NIE null senden.
-  // Wenn leer: Property weglassen (undefined)
+  // Suchparameter bauen (ohne null)
   const variables = useMemo<BuecherQueryVars>(() => {
     const sp: SuchparameterInput = {};
 
@@ -94,7 +88,6 @@ export default function SearchPage() {
     if (art) sp.art = art;
     if (filter.lieferbar) sp.lieferbar = true;
 
-    // ✅ leer => { } statt { suchparameter: null }
     return Object.keys(sp).length ? { suchparameter: sp } : {};
   }, [filter]);
 
@@ -108,45 +101,26 @@ export default function SearchPage() {
 
   const buecher = data?.buecher ?? [];
   const total = buecher.length;
+
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const paged = buecher.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const safePage = Math.min(page, totalPages);
+  const paged = buecher.slice(
+    (safePage - 1) * PAGE_SIZE,
+    safePage * PAGE_SIZE
+  );
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-
-    const form = new FormData(e.currentTarget);
-
-    const next = {
-      titel: String(form.get("titel") ?? ""),
-      isbn: String(form.get("isbn") ?? ""),
-      rating: String(form.get("rating") ?? ""),
-      art: String(form.get("art") ?? ""),
-      lieferbar: form.get("lieferbar") ? true : false,
-    };
-
     setPage(1);
-    setFilter(next);
+    // variables kommen aus filter-state -> refetch triggert Suche
+    await refetch(variables);
+  }
 
-    // optional sofort refetch
-    const sp: SuchparameterInput = {};
-    const titel = next.titel.trim();
-    const isbn = next.isbn.trim();
-    const ratingStr = next.rating.trim();
-    const art = next.art.trim();
-
-    if (titel) sp.titel = titel;
-    if (isbn) sp.isbn = isbn;
-
-    if (ratingStr) {
-      const parsed = Number(ratingStr);
-      if (!Number.isNaN(parsed)) sp.rating = parsed;
-    }
-
-    if (art) sp.art = art;
-    if (next.lieferbar) sp.lieferbar = true;
-
-    // ✅ leer => {} statt null
-    await refetch(Object.keys(sp).length ? { suchparameter: sp } : {});
+  async function onReset() {
+    setPage(1);
+    setFilter(INITIAL_FILTER);
+    // komplett ohne suchparameter => "alle Bücher" (oder Standard)
+    await refetch({});
   }
 
   return (
@@ -160,13 +134,25 @@ export default function SearchPage() {
           <form onSubmit={onSubmit}>
             <Stack gap={4}>
               <Box>
-                <Text mb={1}>Titel (Textfeld)</Text>
-                <Input name="titel" defaultValue={filter.titel} />
+                <Text mb={1}>Titel</Text>
+                <Input
+                  name="titel"
+                  value={filter.titel}
+                  onChange={(e) =>
+                    setFilter((f) => ({ ...f, titel: e.target.value }))
+                  }
+                />
               </Box>
 
               <Box>
-                <Text mb={1}>ISBN (Textfeld)</Text>
-                <Input name="isbn" defaultValue={filter.isbn} />
+                <Text mb={1}>ISBN</Text>
+                <Input
+                  name="isbn"
+                  value={filter.isbn}
+                  onChange={(e) =>
+                    setFilter((f) => ({ ...f, isbn: e.target.value }))
+                  }
+                />
               </Box>
 
               <Box>
@@ -176,15 +162,21 @@ export default function SearchPage() {
                   type="number"
                   min={0}
                   max={5}
-                  defaultValue={filter.rating}
+                  value={filter.rating}
+                  onChange={(e) =>
+                    setFilter((f) => ({ ...f, rating: e.target.value }))
+                  }
                 />
               </Box>
 
               <Box>
-                <Text mb={1}>Art (Dropdown)</Text>
+                <Text mb={1}>Art</Text>
                 <Select
                   name="art"
-                  defaultValue={filter.art}
+                  value={filter.art}
+                  onChange={(e) =>
+                    setFilter((f) => ({ ...f, art: e.target.value }))
+                  }
                   style={{
                     border: "1px solid",
                     borderRadius: "8px",
@@ -192,67 +184,42 @@ export default function SearchPage() {
                   }}
                 >
                   {ART_OPTIONS.map((v) => (
-                    <option key={v} value={v}>
+                    <option key={v || "ALL"} value={v}>
                       {v === "" ? "Alle" : v}
                     </option>
                   ))}
                 </Select>
-                <Text mt={1} fontSize="sm" opacity={0.8}>
-                  Wenn hier ein GraphQL-Enum-Fehler kommt, ART_OPTIONS an dein Backend-Enum anpassen.
-                </Text>
               </Box>
 
               <Box>
-                <Text mb={1}>Lieferbar (Checkbox)</Text>
+                <Text mb={1}>Lieferbar</Text>
                 <label>
                   <input
                     type="checkbox"
                     name="lieferbar"
-                    defaultChecked={filter.lieferbar}
+                    checked={filter.lieferbar}
+                    onChange={(e) =>
+                      setFilter((f) => ({ ...f, lieferbar: e.target.checked }))
+                    }
                   />{" "}
                   Nur lieferbare Bücher
                 </label>
               </Box>
 
-              <Box>
-                <Text mb={1}>Radiobuttons (UI-Requirement)</Text>
-                <HStack gap={6}>
-                  <label>
-                    <input type="radio" name="statusDemo" defaultChecked /> Alle
-                  </label>
-                  <label>
-                    <input type="radio" name="statusDemo" /> Aktiv
-                  </label>
-                  <label>
-                    <input type="radio" name="statusDemo" /> Inaktiv
-                  </label>
-                </HStack>
-                <Text mt={1} fontSize="sm" opacity={0.8}>
-                  (Demo, weil dein Backend keinen Status-Suchparameter hat.)
-                </Text>
-              </Box>
+              <HStack>
+                <Button type="submit" colorScheme="teal" loading={loading}>
+                  Suchen
+                </Button>
 
-              <Box>
-                <Text mb={1}>Checkboxen (UI-Requirement)</Text>
-                <HStack gap={6} wrap="wrap">
-                  <label>
-                    <input type="checkbox" name="tagsDemo" value="JAVA" /> JAVA
-                  </label>
-                  <label>
-                    <input type="checkbox" name="tagsDemo" value="TS" /> TYPESCRIPT
-                  </label>
-                  <label>
-                    <input type="checkbox" name="tagsDemo" value="DB" /> DATABASE
-                  </label>
-                </HStack>
-                <Text mt={1} fontSize="sm" opacity={0.8}>
-                  (Demo, weil dein Backend Schlagwörter nicht im Suchparameter filtert.)
-                </Text>
-              </Box>
-
-              <Button type="submit" colorScheme="teal" loading={loading}>
-                Suchen
-              </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={onReset}
+                  disabled={loading}
+                >
+                  Zurücksetzen
+                </Button>
+              </HStack>
             </Stack>
           </form>
         </Box>
@@ -277,16 +244,35 @@ export default function SearchPage() {
                   display="flex"
                   justifyContent="space-between"
                   alignItems="center"
+                  gap={4}
                 >
                   <Box>
-                    <Text fontWeight="bold">{b.titel?.titel ?? "(ohne Titel)"}</Text>
-                    <Text fontSize="sm">
-                      ISBN: {b.isbn ?? "-"} · Rating: {String(b.rating ?? "-")} · Art:{" "}
-                      {b.art ?? "-"}
+                    <Text fontWeight="bold">
+                      {b.titel?.titel ?? "(ohne Titel)"}
                     </Text>
+
                     <Text fontSize="sm">
-                      Lieferbar: {String(b.lieferbar ?? "-")} · Preis: {String(b.preis ?? "-")}
+                      ISBN: {b.isbn ?? "-"} · Rating: {String(b.rating ?? "-")}
+                      {" · "}Art: {b.art ?? "-"}
                     </Text>
+
+                    <Text fontSize="sm">
+                      Lieferbar: {String(b.lieferbar ?? "-")} · Preis:{" "}
+                      {String(b.preis ?? "-")}
+                      {" · "}Rabatt: {b.rabatt ?? "-"}
+                    </Text>
+
+                    {(b.homepage || (b.schlagwoerter?.length ?? 0) > 0) && (
+                      <Text fontSize="sm">
+                        {b.homepage ? `Homepage: ${b.homepage}` : ""}
+                        {b.homepage && (b.schlagwoerter?.length ?? 0) > 0
+                          ? " · "
+                          : ""}
+                        {(b.schlagwoerter?.length ?? 0) > 0
+                          ? `Schlagwörter: ${b.schlagwoerter!.join(", ")}`
+                          : ""}
+                      </Text>
+                    )}
                   </Box>
 
                   <Link
@@ -303,20 +289,20 @@ export default function SearchPage() {
 
               <HStack justify="space-between" pt={2}>
                 <Text>
-                  Seite {page} / {totalPages} (Total: {total})
+                  Seite {safePage} / {totalPages} (Total: {total})
                 </Text>
                 <HStack gap={2}>
                   <Button
                     size="sm"
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    disabled={page <= 1}
+                    disabled={safePage <= 1}
                   >
                     Zurück
                   </Button>
                   <Button
                     size="sm"
                     onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                    disabled={page >= totalPages}
+                    disabled={safePage >= totalPages}
                   >
                     Weiter
                   </Button>
@@ -325,6 +311,7 @@ export default function SearchPage() {
             </Stack>
           </Box>
         )}
+
       </Stack>
     </AppLayout>
   );

@@ -3,18 +3,22 @@
 import { useEffect, useMemo, useState } from "react";
 import NextLink from "next/link";
 import {
+  Alert,
+  Badge,
   Box,
   Button,
   Code,
-  Container,
+  Grid,
   Heading,
   HStack,
   Link,
+  Separator,
   SimpleGrid,
-  Spinner,
+  Skeleton,
+  Stack,
   Text,
-  VStack,
 } from "@chakra-ui/react";
+import { AppLayout } from "@/components/AppLayout";
 
 type ApiResult = {
   ok: boolean;
@@ -49,6 +53,7 @@ function safeParseJwt(token: string): Record<string, unknown> | null {
   try {
     const [, payload] = token.split(".");
     if (!payload) return null;
+
     const b64 = payload.replace(/-/g, "+").replace(/_/g, "/");
     const json = decodeURIComponent(
       atob(b64)
@@ -56,6 +61,7 @@ function safeParseJwt(token: string): Record<string, unknown> | null {
         .map((c) => "%" + c.charCodeAt(0).toString(16).padStart(2, "0"))
         .join("")
     );
+
     return JSON.parse(json) as Record<string, unknown>;
   } catch {
     return null;
@@ -86,62 +92,69 @@ function extractRoles(payload: Record<string, unknown> | null): string[] {
   return Array.from(new Set(roles));
 }
 
-function Card({ title, children }: { title: string; children: React.ReactNode }) {
+function StatusBadge({
+  label,
+  tone,
+}: {
+  label: string;
+  tone: "green" | "red" | "orange" | "gray" | "blue" | "purple";
+}) {
   return (
-    <Box bg="white" borderRadius="lg" boxShadow="md" p={6}>
-      <Heading size="md" mb={4}>
-        {title}
-      </Heading>
-      {children}
-    </Box>
+    <Badge
+      px={2}
+      py={1}
+      borderRadius="md"
+      bg={`${tone}.100`}
+      color={`${tone}.800`}
+    >
+      {label}
+    </Badge>
   );
 }
 
-function StatusBox({
-  title,
-  result,
-  loading,
-}: {
-  title: string;
-  result: ApiResult | null;
-  loading?: boolean;
-}) {
-  if (!result && !loading) return null;
+function PrettyResult({ result }: { result: ApiResult | null }) {
+  if (!result) return null;
 
-  const ok = result?.ok ?? false;
-  const status = result?.status ?? 0;
+  const ok = result.ok;
 
   return (
     <Box
+      borderWidth="1px"
       borderRadius="md"
       p={3}
-      borderWidth="1px"
-      borderColor={ok ? "green.300" : "red.300"}
       bg={ok ? "green.50" : "red.50"}
+      borderColor={ok ? "green.200" : "red.200"}
     >
       <HStack justify="space-between" align="start">
         <Text fontWeight="semibold">
-          {title}: {loading ? "Lade…" : ok ? "OK" : "Fehler"} {loading ? "" : `(HTTP ${status})`}
+          {ok ? "OK" : "Fehler"}{" "}
+          <Text as="span" fontWeight="normal">
+            (HTTP {result.status || "?"})
+          </Text>
         </Text>
-        {loading && <Spinner size="sm" />}
+        <StatusBadge label={ok ? "Success" : "Error"} tone={ok ? "green" : "red"} />
       </HStack>
 
-      {!loading && (
-        <>
-          <Text mt={2} fontWeight="semibold">
-            Antwort:
-          </Text>
-          <Code display="block" whiteSpace="pre" p={3} borderRadius="md" mt={2}>
-            {JSON.stringify(result?.body ?? null, null, 2)}
-          </Code>
-        </>
-      )}
+      <Text mt={2} fontSize="sm" color="gray.700">
+        Antwort (gekürzt):
+      </Text>
+      <Code
+        display="block"
+        whiteSpace="pre"
+        p={3}
+        borderRadius="md"
+        mt={2}
+        maxH="220px"
+        overflow="auto"
+      >
+        {JSON.stringify(result.body ?? null, null, 2)}
+      </Code>
     </Box>
   );
 }
 
 export default function Page() {
-  // Token + Payload IMMER über State/Effect -> keine Hook-Order Probleme
+  // Auth
   const [token, setToken] = useState<string | null>(null);
   const payload = useMemo(() => (token ? safeParseJwt(token) : null), [token]);
   const roles = useMemo(() => extractRoles(payload), [payload]);
@@ -154,23 +167,29 @@ export default function Page() {
 
   const exp = payload && typeof payload["exp"] === "number" ? (payload["exp"] as number) : null;
 
-  const tokenStatus = useMemo(() => {
-    if (!token) return { label: "Nicht eingeloggt", color: "red.500" };
-    if (!exp) return { label: "Token da, aber exp unbekannt", color: "orange.500" };
+  const tokenMeta = useMemo(() => {
+    if (!token) {
+      return { badge: <StatusBadge label="Nicht eingeloggt" tone="red" />, detail: "Bitte einloggen." };
+    }
+    if (!exp) {
+      return { badge: <StatusBadge label="Token vorhanden" tone="orange" />, detail: "Ablaufdatum (exp) nicht gefunden." };
+    }
     const now = Math.floor(Date.now() / 1000);
     const remaining = exp - now;
-    if (remaining <= 0) return { label: "Token abgelaufen", color: "red.500" };
+    if (remaining <= 0) {
+      return { badge: <StatusBadge label="Token abgelaufen" tone="red" />, detail: "Bitte neu einloggen." };
+    }
     const mins = Math.floor(remaining / 60);
-    return { label: `Token gültig (noch ~${mins} min)`, color: "green.600" };
+    return { badge: <StatusBadge label="Eingeloggt" tone="green" />, detail: `Token gültig (noch ca. ${mins} min).` };
   }, [token, exp]);
 
-  // Backend-Test
+  // Admin tools state
   const [health, setHealth] = useState<ApiResult | null>(null);
   const [count, setCount] = useState<ApiResult | null>(null);
   const [loadingHealth, setLoadingHealth] = useState(false);
   const [loadingCount, setLoadingCount] = useState(false);
 
-  // Letzte Bücher
+  // Latest books
   const [latest, setLatest] = useState<Buch[]>([]);
   const [latestErr, setLatestErr] = useState<string | null>(null);
   const [loadingLatest, setLoadingLatest] = useState(false);
@@ -180,12 +199,12 @@ export default function Page() {
     setToken(t);
   }, []);
 
-  const logout = () => {
+  function logout() {
     localStorage.removeItem("access_token");
     localStorage.removeItem("refresh_token");
     localStorage.removeItem("token");
     window.location.href = "/login";
-  };
+  }
 
   const loadHealth = async () => {
     setLoadingHealth(true);
@@ -221,10 +240,9 @@ export default function Page() {
     setLatest([]);
 
     try {
-      // Wichtig: Kein "PageableInput" Typ verwenden -> inline Argumente vermeiden Schema-Mismatch
       const query = `
         query {
-          buecher(suchkriterien: {}, pageable: { number: 0, size: 5 }) {
+          buecher {
             id
             isbn
             rating
@@ -253,7 +271,8 @@ export default function Page() {
         return;
       }
 
-      setLatest(json.data?.buecher ?? []);
+      const all = json.data?.buecher ?? [];
+      setLatest(all.slice(0, 5));
     } catch (e: unknown) {
       setLatestErr(getErrorMessage(e));
     } finally {
@@ -266,202 +285,247 @@ export default function Page() {
   };
 
   useEffect(() => {
-    // Admin lädt automatisch die Admin-Widgets
     if (isAdmin) void loadAdminStuff();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAdmin]);
 
   return (
-    <Box bg="gray.50" minH="100vh" py={10}>
-      <Container maxW="6xl">
-        <HStack justify="space-between" align="start" mb={8} wrap="wrap" gap={4}>
-          <Box>
-            <Heading>Buch Frontend Dashboard</Heading>
-            <Text mt={2} color="gray.600">
-              {isAdmin ? "Admin: Status + Tools" : "User: Quick Links"}
-            </Text>
-          </Box>
+    <AppLayout title="Dashboard">
+      <Stack gap={6}>
+        {/* Hero / Status */}
+        <Box borderWidth="1px" borderRadius="xl" bg="white" p={{ base: 4, md: 6 }}>
+          <Grid templateColumns={{ base: "1fr", md: "1.2fr 0.8fr" }} gap={6} alignItems="center">
+            <Box>
+              <Heading size="lg">Buch Frontend</Heading>
+              <Text mt={2} color="gray.600">
+                Schnellzugriff auf Suche & (optional) Admin-Tools.
+              </Text>
 
-          <HStack gap={3}>
-            {isAdmin && (
-              <Button onClick={() => void loadAdminStuff()} colorScheme="blue" variant="outline">
-                Reload
-              </Button>
-            )}
-            {token ? (
-              <Button onClick={logout} variant="outline">
-                Logout
-              </Button>
-            ) : (
-              <Link as={NextLink} href="/login" _hover={{ textDecoration: "none" }}>
-                <Button colorScheme="teal">Zum Login</Button>
-              </Link>
-            )}
-          </HStack>
-        </HStack>
+              <HStack mt={4} gap={2} wrap="wrap">
+                {tokenMeta.badge}
+                {isAdmin ? <StatusBadge label="Admin" tone="purple" /> : <StatusBadge label="User" tone="blue" />}
+                {username ? (
+                  <Text fontSize="sm" color="gray.600">
+                    Angemeldet als {username}.
+                  </Text>
+                ) : null}
+              </HStack>
 
-        <SimpleGrid columns={{ base: 1, md: 2 }} gap={6}>
-          {/* Quick Links - IMMER sichtbar */}
-          <Card title="Quick Links">
-            <VStack align="stretch" gap={3}>
-              <Link as={NextLink} href="/search" _hover={{ textDecoration: "none" }}>
-                <Button w="full" colorScheme="teal">
-                  Zur Suche
-                </Button>
-              </Link>
+              <Text mt={2} fontSize="sm" color="gray.600">
+                {tokenMeta.detail}
+              </Text>
 
-              {isAdmin ? (
+              {!token ? (
+                <Alert.Root status="warning" mt={4} borderRadius="md">
+                  <Alert.Indicator />
+                  <Alert.Content>
+                    <Alert.Title>Hinweis</Alert.Title>
+                    <Alert.Description>
+                      Du bist nicht eingeloggt. Manche Funktionen (GraphQL / Admin) könnten fehlschlagen.
+                    </Alert.Description>
+                  </Alert.Content>
+                </Alert.Root>
+              ) : null}
+            </Box>
+
+            <Box>
+              <Stack gap={3}>
+                <Link as={NextLink} href="/search" _hover={{ textDecoration: "none" }}>
+                  <Button w="full" size="lg" bg="teal.600" color="white" _hover={{ bg: "teal.700" }}>
+                    Zur Suche
+                  </Button>
+                </Link>
+
                 <Link as={NextLink} href="/items/new" _hover={{ textDecoration: "none" }}>
-                  <Button w="full" colorScheme="purple" variant="outline">
+                  <Button
+                    w="full"
+                    variant="outline"
+                    size="lg"
+                    borderColor={isAdmin ? "purple.400" : "gray.300"}
+                    color={isAdmin ? "purple.700" : "gray.600"}
+                    disabled={!isAdmin}
+                  >
                     Neues Buch anlegen
                   </Button>
                 </Link>
-              ) : (
-                <Box borderWidth="1px" borderColor="gray.200" borderRadius="md" p={3} bg="gray.50">
-                  <Text fontSize="sm" color="gray.700">
-                    “Neues Buch anlegen” ist nur für Admin verfügbar.
-                  </Text>
-                </Box>
-              )}
-            </VStack>
-          </Card>
 
-          {/* Admin-only: Auth Status */}
-          {isAdmin && (
-            <Card title="Auth Status">
-              <VStack align="stretch" gap={3}>
-                <Text>
-                  Nutzer:{" "}
-                  <Text as="span" fontWeight="semibold">
-                    {username ?? "(unbekannt)"}
-                  </Text>
-                </Text>
-
-                <Text fontSize="sm" color="gray.600">
-                  Rollen: <Code>{roles.join(", ") || "-"}</Code>
-                </Text>
-
-                <Text color={tokenStatus.color} fontWeight="semibold">
-                  {tokenStatus.label}
-                </Text>
-
-                {token && (
-                  <>
-                    <Text fontSize="sm" color="gray.600">
-                      Token (gekürzt):
-                    </Text>
-                    <Code p={2} borderRadius="md">
-                      {token.slice(0, 40)}…{token.slice(-20)}
-                    </Code>
-                  </>
-                )}
-              </VStack>
-            </Card>
-          )}
-
-          {/* Admin-only: Backend */}
-          {isAdmin && (
-            <Card title="Backend Health">
-              <VStack align="stretch" gap={3}>
-                <HStack>
-                  <Button onClick={() => void loadHealth()} colorScheme="blue">
-                    Health prüfen
+                {token ? (
+                  <Button onClick={logout} variant="ghost" size="sm">
+                    Logout
                   </Button>
-                  {loadingHealth && <Spinner />}
-                </HStack>
-                <StatusBox title="Health" result={health} loading={loadingHealth} />
-              </VStack>
-            </Card>
-          )}
+                ) : null}
 
-          {isAdmin && (
-            <Card title="Bücher Count">
-              <VStack align="stretch" gap={3}>
-                <HStack>
-                  <Button onClick={() => void loadCount()} colorScheme="green">
-                    Buch-Count laden
-                  </Button>
-                  {loadingCount && <Spinner />}
-                </HStack>
-                <StatusBox title="Count" result={count} loading={loadingCount} />
-              </VStack>
-            </Card>
-          )}
-
-          {/* Admin-only: Letzte Bücher */}
-          {isAdmin && (
-            <Box gridColumn={{ base: "auto", md: "1 / -1" }}>
-              <Card title="Letzte 5 Bücher">
-                <VStack align="stretch" gap={3}>
-                  <HStack justify="space-between">
-                    <Button
-                      onClick={() => void loadLatest()}
-                      variant="outline"
-                      loading={loadingLatest}
-                    >
-                      Neu laden
-                    </Button>
-                    <Text fontSize="sm" color="gray.600">
-                      (nur Admin)
-                    </Text>
-                  </HStack>
-
-                  {loadingLatest ? (
-                    <HStack>
-                      <Spinner />
-                      <Text>Lade…</Text>
-                    </HStack>
-                  ) : latestErr ? (
-                    <Box borderWidth="1px" borderColor="red.300" bg="red.50" borderRadius="md" p={3}>
-                      <Text fontWeight="semibold" color="red.700">
-                        Fehler beim Laden
-                      </Text>
-                      <Text fontSize="sm" mt={1}>
-                        {latestErr}
-                      </Text>
-                    </Box>
-                  ) : latest.length === 0 ? (
-                    <Text color="gray.600">Keine Bücher gefunden.</Text>
-                  ) : (
-                    <VStack align="stretch" gap={3}>
-                      {latest.map((b) => (
-                        <Box
-                          key={b.id}
-                          borderWidth="1px"
-                          borderRadius="md"
-                          p={4}
-                          display="flex"
-                          justifyContent="space-between"
-                          alignItems="center"
-                          gap={4}
-                        >
-                          <Box>
-                            <Text fontWeight="bold">{b.titel?.titel ?? "(ohne Titel)"}</Text>
-                            <Text fontSize="sm" color="gray.600">
-                              ISBN: {b.isbn ?? "-"} · Rating: {String(b.rating ?? "-")} · Art:{" "}
-                              {b.art ?? "-"}
-                            </Text>
-                            <Text fontSize="sm" color="gray.600">
-                              Lieferbar: {String(b.lieferbar ?? "-")} · Preis:{" "}
-                              {String(b.preis ?? "-")}
-                            </Text>
-                          </Box>
-
-                          <Link as={NextLink} href={`/items/${b.id}`} _hover={{ textDecoration: "none" }}>
-                            <Button size="sm" variant="outline">
-                              Details
-                            </Button>
-                          </Link>
-                        </Box>
-                      ))}
-                    </VStack>
-                  )}
-                </VStack>
-              </Card>
+                {!isAdmin ? (
+                  <Text fontSize="sm" color="gray.600">
+                    „Neues Buch“ ist nur für Admin verfügbar.
+                  </Text>
+                ) : null}
+              </Stack>
             </Box>
-          )}
+          </Grid>
+        </Box>
+
+        {/* Quick stats (ohne Stat-Komponente) */}
+        <SimpleGrid columns={{ base: 1, md: 3 }} gap={4}>
+          <Box borderWidth="1px" borderRadius="xl" bg="white" p={5}>
+            <Text fontSize="sm" color="gray.600">
+              Rollen
+            </Text>
+            <Text fontSize="2xl" fontWeight="bold" mt={1}>
+              {roles.length ? roles.length : 0}
+            </Text>
+            <Text mt={2} fontSize="sm" color="gray.600">
+              <Code>{roles.join(", ") || "-"}</Code>
+            </Text>
+          </Box>
+
+          <Box borderWidth="1px" borderRadius="xl" bg="white" p={5}>
+            <Text fontSize="sm" color="gray.600">
+              Auth
+            </Text>
+            <Text fontSize="2xl" fontWeight="bold" mt={1}>
+              {token ? "Token" : "—"}
+            </Text>
+            <Text mt={2} fontSize="sm" color="gray.600">
+              {token ? "Token vorhanden" : "Nicht eingeloggt"}
+            </Text>
+          </Box>
+
+          <Box borderWidth="1px" borderRadius="xl" bg="white" p={5}>
+            <Text fontSize="sm" color="gray.600">
+              Quick Tip
+            </Text>
+            <Text fontSize="2xl" fontWeight="bold" mt={1}>
+              Suche
+            </Text>
+            <Text mt={2} fontSize="sm" color="gray.600">
+              Nutze Filter + Reset für schnelles Testen.
+            </Text>
+          </Box>
         </SimpleGrid>
-      </Container>
-    </Box>
+
+        <Separator />
+
+        {/* Admin */}
+        {isAdmin ? (
+          <Stack gap={4}>
+            <HStack justify="space-between" wrap="wrap" gap={3}>
+              <Heading size="md">Admin Tools</Heading>
+              <Button onClick={() => void loadAdminStuff()} variant="outline">
+                Alles neu laden
+              </Button>
+            </HStack>
+
+            <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>
+              <Box borderWidth="1px" borderRadius="xl" bg="white" p={5}>
+                <HStack justify="space-between" mb={3} wrap="wrap" gap={2}>
+                  <Heading size="sm">Backend Health</Heading>
+                  <Button onClick={() => void loadHealth()} size="sm" loading={loadingHealth}>
+                    Prüfen
+                  </Button>
+                </HStack>
+
+                <Skeleton loading={loadingHealth}>
+                  <PrettyResult result={health} />
+                  {!health ? (
+                    <Text fontSize="sm" color="gray.600">
+                      Klicke auf „Prüfen“ oder „Alles neu laden“.
+                    </Text>
+                  ) : null}
+                </Skeleton>
+              </Box>
+
+              <Box borderWidth="1px" borderRadius="xl" bg="white" p={5}>
+                <HStack justify="space-between" mb={3} wrap="wrap" gap={2}>
+                  <Heading size="sm">Buch-Count</Heading>
+                  <Button onClick={() => void loadCount()} size="sm" loading={loadingCount}>
+                    Laden
+                  </Button>
+                </HStack>
+
+                <Skeleton loading={loadingCount}>
+                  <PrettyResult result={count} />
+                  {!count ? (
+                    <Text fontSize="sm" color="gray.600">
+                      Klicke auf „Laden“ oder „Alles neu laden“.
+                    </Text>
+                  ) : null}
+                </Skeleton>
+              </Box>
+
+              <Box borderWidth="1px" borderRadius="xl" bg="white" p={5} gridColumn={{ base: "auto", md: "1 / -1" }}>
+                <HStack justify="space-between" mb={3} wrap="wrap" gap={2}>
+                  <Heading size="sm">Bücher (Top 5)</Heading>
+                  <Button onClick={() => void loadLatest()} size="sm" variant="outline" loading={loadingLatest}>
+                    Neu laden
+                  </Button>
+                </HStack>
+
+                {loadingLatest ? (
+                  <Stack gap={3}>
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <Skeleton key={i} height="64px" borderRadius="md" loading />
+                    ))}
+                  </Stack>
+                ) : latestErr ? (
+                  <Alert.Root status="error" borderRadius="md">
+                    <Alert.Indicator />
+                    <Alert.Content>
+                      <Alert.Title>Fehler</Alert.Title>
+                      <Alert.Description>{latestErr}</Alert.Description>
+                    </Alert.Content>
+                  </Alert.Root>
+                ) : latest.length === 0 ? (
+                  <Text color="gray.600">Keine Bücher gefunden.</Text>
+                ) : (
+                  <Stack gap={3}>
+                    {latest.map((b) => (
+                      <Box
+                        key={b.id}
+                        borderWidth="1px"
+                        borderRadius="lg"
+                        p={4}
+                        bg="gray.50"
+                        display="flex"
+                        justifyContent="space-between"
+                        alignItems="center"
+                        gap={4}
+                      >
+                        <Box>
+                          <Text fontWeight="bold">{b.titel?.titel ?? "(ohne Titel)"}</Text>
+                          <Text fontSize="sm" color="gray.600">
+                            ISBN: {b.isbn ?? "-"} · Rating: {String(b.rating ?? "-")} · Art: {b.art ?? "-"}
+                          </Text>
+                          <Text fontSize="sm" color="gray.600">
+                            Lieferbar: {String(b.lieferbar ?? "-")} · Preis: {String(b.preis ?? "-")}
+                          </Text>
+                        </Box>
+
+                        <Link as={NextLink} href={`/items/${b.id}`} _hover={{ textDecoration: "none" }}>
+                          <Button size="sm" variant="outline">
+                            Details
+                          </Button>
+                        </Link>
+                      </Box>
+                    ))}
+                  </Stack>
+                )}
+              </Box>
+            </SimpleGrid>
+
+            {token ? (
+              <Box borderWidth="1px" borderRadius="xl" bg="white" p={5}>
+                <Heading size="sm" mb={2}>
+                  Debug (Token gekürzt)
+                </Heading>
+                <Code display="block" p={3} borderRadius="md">
+                  {token.slice(0, 40)}…{token.slice(-20)}
+                </Code>
+              </Box>
+            ) : null}
+          </Stack>
+        ) : null}
+      </Stack>
+    </AppLayout>
   );
 }
