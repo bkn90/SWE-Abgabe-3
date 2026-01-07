@@ -23,6 +23,8 @@ export async function POST(req: Request) {
   const text = await res.text();
   return new Response(text, {
     status: res.status,
-    headers: { "content-type": res.headers.get("content-type") ?? "application/json" },
+    headers: {
+      "content-type": res.headers.get("content-type") ?? "application/json",
+    },
   });
 }

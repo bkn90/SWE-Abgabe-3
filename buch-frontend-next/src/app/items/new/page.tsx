@@ -27,7 +27,7 @@ function safeParseJwt(token: string): Record<string, unknown> | null {
       atob(b64)
         .split("")
         .map((c) => "%" + c.charCodeAt(0).toString(16).padStart(2, "0"))
-        .join("")
+        .join(""),
     );
     return JSON.parse(json) as Record<string, unknown>;
   } catch {
@@ -85,7 +85,9 @@ export default function NewBookPage() {
     (payload &&
       typeof payload["preferred_username"] === "string" &&
       (payload["preferred_username"] as string)) ||
-    (payload && typeof payload["name"] === "string" && (payload["name"] as string)) ||
+    (payload &&
+      typeof payload["name"] === "string" &&
+      (payload["name"] as string)) ||
     null;
 
   // Formularfelder
@@ -121,7 +123,11 @@ export default function NewBookPage() {
 
     try {
       if (!token) {
-        setResult({ ok: false, status: 401, body: "Kein Token gefunden. Bitte einloggen." });
+        setResult({
+          ok: false,
+          status: 401,
+          body: "Kein Token gefunden. Bitte einloggen.",
+        });
         return;
       }
 
@@ -163,7 +169,13 @@ export default function NewBookPage() {
   return (
     <Box bg="gray.50" minH="100vh" py={10}>
       <Container maxW="4xl">
-        <HStack justify="space-between" align="start" mb={8} wrap="wrap" gap={4}>
+        <HStack
+          justify="space-between"
+          align="start"
+          mb={8}
+          wrap="wrap"
+          gap={4}
+        >
           <Box>
             <Heading>Neues Buch anlegen</Heading>
             <Text mt={2} color="gray.600">
@@ -209,7 +221,11 @@ export default function NewBookPage() {
               <Text fontWeight="semibold" color="red.700">
                 Kein Token gefunden – bitte einloggen.
               </Text>
-              <Link as={NextLink} href="/login" _hover={{ textDecoration: "none" }}>
+              <Link
+                as={NextLink}
+                href="/login"
+                _hover={{ textDecoration: "none" }}
+              >
                 <Button mt={3} colorScheme="teal">
                   Zum Login
                 </Button>
@@ -230,15 +246,24 @@ export default function NewBookPage() {
                 Kein Zugriff: Nur Admin
               </Text>
               <Text fontSize="sm" mt={1}>
-                Du bist eingeloggt, aber hast keine <Code>admin</Code>-Rolle im Token.
+                Du bist eingeloggt, aber hast keine <Code>admin</Code>-Rolle im
+                Token.
               </Text>
               <HStack mt={3}>
-                <Link as={NextLink} href="/search" _hover={{ textDecoration: "none" }}>
+                <Link
+                  as={NextLink}
+                  href="/search"
+                  _hover={{ textDecoration: "none" }}
+                >
                   <Button colorScheme="teal" variant="outline">
                     Zur Suche
                   </Button>
                 </Link>
-                <Link as={NextLink} href="/" _hover={{ textDecoration: "none" }}>
+                <Link
+                  as={NextLink}
+                  href="/"
+                  _hover={{ textDecoration: "none" }}
+                >
                   <Button variant="outline">Dashboard</Button>
                 </Link>
               </HStack>
@@ -314,7 +339,10 @@ export default function NewBookPage() {
             </HStack>
 
             <SimpleField label="Homepage" hint="URL">
-              <Input value={homepage} onChange={(e) => setHomepage(e.target.value)} />
+              <Input
+                value={homepage}
+                onChange={(e) => setHomepage(e.target.value)}
+              />
             </SimpleField>
 
             <SimpleField
@@ -350,7 +378,11 @@ export default function NewBookPage() {
                 Buch anlegen
               </Button>
 
-              <Link as={NextLink} href="/search" _hover={{ textDecoration: "none" }}>
+              <Link
+                as={NextLink}
+                href="/search"
+                _hover={{ textDecoration: "none" }}
+              >
                 <Button variant="outline">Zur Suche</Button>
               </Link>
             </HStack>
@@ -363,7 +395,13 @@ export default function NewBookPage() {
                     {result.ok ? "OK" : "Fehler"} (HTTP {result.status})
                   </Text>
                 </Text>
-                <Code display="block" whiteSpace="pre" p={3} borderRadius="md" mt={2}>
+                <Code
+                  display="block"
+                  whiteSpace="pre"
+                  p={3}
+                  borderRadius="md"
+                  mt={2}
+                >
                   {JSON.stringify(result.body, null, 2)}
                 </Code>
               </Box>

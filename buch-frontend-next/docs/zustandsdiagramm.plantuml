@@ -1,0 +1,53 @@
+@startuml Zustandsdiagramm
+title Zustandsdiagramm
+
+[*] --> NichtEingeloggt
+
+state NichtEingeloggt {
+  [*] --> LoginSeite
+  LoginSeite --> LoginFehler : Login fehlgeschlagen
+  LoginFehler --> LoginSeite
+}
+
+LoginSeite --> EingeloggtUser : Login erfolgreich (Rolle = USER)
+LoginSeite --> EingeloggtAdmin : Login erfolgreich (Rolle = ADMIN)
+
+state EingeloggtUser {
+  [*] --> Dashboard
+
+  Dashboard --> Suche
+  Suche --> Suche : Suche ausführen
+  Suche --> Detail : Buch auswählen
+  Detail --> Suche : Zurück
+
+  Dashboard --> Logout
+  Suche --> Logout
+  Detail --> Logout
+
+  Logout --> NichtEingeloggt
+}
+
+state EingeloggtAdmin {
+  [*] --> Dashboard
+
+  Dashboard --> Suche
+  Suche --> Suche : Suche ausführen
+  Suche --> Detail : Buch auswählen
+  Detail --> Suche : Zurück
+
+  Dashboard --> NeuesBuch
+  NeuesBuch --> NeuesBuch : Validierungsfehler
+  NeuesBuch --> Suche : Buch erfolgreich angelegt
+
+  Dashboard --> Logout
+  Suche --> Logout
+  Detail --> Logout
+  NeuesBuch --> Logout
+
+  Logout --> NichtEingeloggt
+}
+
+NeuesBuch --> KeineBerechtigung : Zugriff ohne Admin-Rolle
+KeineBerechtigung --> Dashboard
+
+@enduml

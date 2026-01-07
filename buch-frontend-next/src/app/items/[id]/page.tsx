@@ -34,7 +34,7 @@ export default function BuchDetailPage() {
 
   const { data, loading, error } = useQuery<BuchQueryData, BuchQueryVars>(
     BUCH_QUERY,
-    { variables: { id } }
+    { variables: { id } },
   );
 
   const buch = data?.buch ?? null;

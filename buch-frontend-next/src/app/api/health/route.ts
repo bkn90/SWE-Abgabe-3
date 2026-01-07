@@ -26,7 +26,7 @@ export async function GET() {
   if (!baseUrl) {
     return NextResponse.json(
       { ok: false, status: 500, body: "API_BASE_URL fehlt" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 
@@ -50,7 +50,7 @@ export async function GET() {
         const text = await res.text();
         return NextResponse.json(
           { ok: res.ok, status: res.status, body: safeJson(text) },
-          { status: 200 }
+          { status: 200 },
         );
       }
     }
@@ -59,12 +59,12 @@ export async function GET() {
     const text = lastRes ? await lastRes.text() : "Kein Response";
     return NextResponse.json(
       { ok: false, status: lastRes?.status ?? 0, body: safeJson(text) },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (e: unknown) {
     return NextResponse.json(
       { ok: false, status: 0, body: getErrorMessage(e) },
-      { status: 200 }
+      { status: 200 },
     );
   }
 }

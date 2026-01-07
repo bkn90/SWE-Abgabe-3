@@ -52,7 +52,11 @@ export default function LoginPage() {
 
             <Box>
               <Text mb={1}>Passwort</Text>
-              <Input name="password" type="password" autoComplete="current-password" />
+              <Input
+                name="password"
+                type="password"
+                autoComplete="current-password"
+              />
             </Box>
 
             <Button type="submit" colorScheme="teal" loading={loading}>
