@@ -2,7 +2,8 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Box, Button, Heading, Input, Stack, Text } from "@chakra-ui/react";
+import { Box, Button, Input, Stack, Text } from "@chakra-ui/react";
+import { AppLayout } from "@/components/AppLayout";
 import { ErrorAlert } from "@/components/ErrorAlert";
 import { login } from "@/lib/auth";
 
@@ -28,6 +29,7 @@ export default function LoginPage() {
       setLoading(true);
       await login(username, password);
       router.push("/");
+      router.refresh();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Login fehlgeschlagen.";
       setErrorMsg(msg);
@@ -37,34 +39,39 @@ export default function LoginPage() {
   }
 
   return (
-    <Stack gap={6} maxW="md" mx="auto" pt={10}>
-      <Heading size="lg">Login</Heading>
+    <AppLayout title="Login">
+      <Stack gap={6} maxW="md">
+        {errorMsg && <ErrorAlert description={errorMsg} />}
 
-      {errorMsg && <ErrorAlert description={errorMsg} />}
+        <Box
+          borderWidth="1px"
+          borderRadius="xl"
+          bg="white"
+          p={{ base: 4, md: 6 }}
+        >
+          <form onSubmit={onSubmit}>
+            <Stack gap={4}>
+              <Box>
+                <Text mb={1}>Benutzername</Text>
+                <Input name="username" autoComplete="username" />
+              </Box>
 
-      <Box borderWidth="1px" rounded="lg" p={6}>
-        <form onSubmit={onSubmit}>
-          <Stack gap={4}>
-            <Box>
-              <Text mb={1}>Benutzername</Text>
-              <Input name="username" autoComplete="username" />
-            </Box>
+              <Box>
+                <Text mb={1}>Passwort</Text>
+                <Input
+                  name="password"
+                  type="password"
+                  autoComplete="current-password"
+                />
+              </Box>
 
-            <Box>
-              <Text mb={1}>Passwort</Text>
-              <Input
-                name="password"
-                type="password"
-                autoComplete="current-password"
-              />
-            </Box>
-
-            <Button type="submit" colorScheme="teal" loading={loading}>
-              Einloggen
-            </Button>
-          </Stack>
-        </form>
-      </Box>
-    </Stack>
+              <Button type="submit" colorScheme="teal" loading={loading}>
+                Einloggen
+              </Button>
+            </Stack>
+          </form>
+        </Box>
+      </Stack>
+    </AppLayout>
   );
 }

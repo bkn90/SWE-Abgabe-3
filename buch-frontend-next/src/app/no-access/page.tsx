@@ -1,27 +1,24 @@
 "use client";
 
 import NextLink from "next/link";
-import {
-  Box,
-  Button,
-  Container,
-  Heading,
-  Link,
-  Text,
-  VStack,
-} from "@chakra-ui/react";
+import { Box, Button, Stack, Text, Link } from "@chakra-ui/react";
+import { AppLayout } from "@/components/AppLayout";
 
 export default function NoAccessPage() {
   return (
-    <Box bg="gray.50" minH="100vh" py={10}>
-      <Container maxW="lg">
-        <Box bg="white" borderRadius="lg" boxShadow="md" p={8}>
-          <VStack align="start" gap={3}>
-            <Heading size="lg">Kein Zugriff</Heading>
-            <Text color="gray.700">
-              Du hast keine Berechtigung, diese Seite zu öffnen. (Nur Admin)
-            </Text>
+    <AppLayout title="Kein Zugriff">
+      <Box
+        borderWidth="1px"
+        borderRadius="xl"
+        bg="white"
+        p={{ base: 4, md: 6 }}
+      >
+        <Stack gap={4}>
+          <Text color="gray.700">
+            Du hast keine Berechtigung, diese Seite zu öffnen. (Nur Admin)
+          </Text>
 
+          <Stack direction={{ base: "column", sm: "row" }} gap={3}>
             <Link as={NextLink} href="/" _hover={{ textDecoration: "none" }}>
               <Button colorScheme="teal">Zurück zum Dashboard</Button>
             </Link>
@@ -33,9 +30,9 @@ export default function NoAccessPage() {
             >
               <Button variant="outline">Zur Suche</Button>
             </Link>
-          </VStack>
-        </Box>
-      </Container>
-    </Box>
+          </Stack>
+        </Stack>
+      </Box>
+    </AppLayout>
   );
 }

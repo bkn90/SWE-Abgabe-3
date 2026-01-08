@@ -1,0 +1,55 @@
+stages:
+  - install
+  - lint
+  - build
+
+default:
+  image: node:20-alpine
+
+variables:
+  PNPM_HOME: "/pnpm"
+  PATH: "$PNPM_HOME:$PATH"
+
+before_script:
+  - corepack enable
+  - corepack prepare pnpm@latest --activate
+  - pnpm --version
+
+# -------------------------
+# Install Dependencies
+# -------------------------
+install_frontend:
+  stage: install
+  script:
+    - cd buch-frontend-next
+    - pnpm install
+  artifacts:
+    paths:
+      - buch-frontend-next/node_modules
+    expire_in: 1h
+
+# -------------------------
+# Lint (ESLint + Prettier)
+# -------------------------
+lint_frontend:
+  stage: lint
+  dependencies:
+    - install_frontend
+  script:
+    - cd buch-frontend-next
+    - pnpm lint
+
+# -------------------------
+# Build Frontend (Next.js)
+# -------------------------
+build_frontend:
+  stage: build
+  dependencies:
+    - install_frontend
+  script:
+    - cd buch-frontend-next
+    - pnpm build
+  artifacts:
+    paths:
+      - buch-frontend-next/.next
+    expire_in: 1 day

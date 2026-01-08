@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import NextLink from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Alert,
   Badge,
@@ -19,6 +20,7 @@ import {
   Text,
 } from "@chakra-ui/react";
 import { AppLayout } from "@/components/AppLayout";
+import { StarRating } from "@/components/StarRating";
 
 type ApiResult = {
   ok: boolean;
@@ -42,6 +44,11 @@ type LatestQueryResponse = {
   data?: { buecher?: Buch[] };
   errors?: GqlError[];
 };
+
+function getToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("access_token") ?? localStorage.getItem("token");
+}
 
 function getErrorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
@@ -70,7 +77,6 @@ function safeParseJwt(token: string): Record<string, unknown> | null {
 
 function extractRoles(payload: Record<string, unknown> | null): string[] {
   if (!payload) return [];
-
   const roles: string[] = [];
 
   const realmAccess = payload["realm_access"];
@@ -116,7 +122,6 @@ function StatusBadge({
 
 function PrettyResult({ result }: { result: ApiResult | null }) {
   if (!result) return null;
-
   const ok = result.ok;
 
   return (
@@ -159,8 +164,17 @@ function PrettyResult({ result }: { result: ApiResult | null }) {
 }
 
 export default function Page() {
-  // Auth
-  const [token, setToken] = useState<string | null>(null);
+  const router = useRouter();
+
+  // lazy init (konsistent mit AppLayout)
+  const [token, setToken] = useState<string | null>(() => getToken());
+
+  useEffect(() => {
+    const onFocus = () => setToken(getToken());
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, []);
+
   const payload = useMemo(() => (token ? safeParseJwt(token) : null), [token]);
   const roles = useMemo(() => extractRoles(payload), [payload]);
   const isAdmin = roles.includes("admin");
@@ -207,29 +221,23 @@ export default function Page() {
     };
   }, [token, exp]);
 
-  // Admin tools state
+  function logout() {
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
+    localStorage.removeItem("token");
+    setToken(null);
+    router.push("/login");
+    router.refresh();
+  }
+
   const [health, setHealth] = useState<ApiResult | null>(null);
   const [count, setCount] = useState<ApiResult | null>(null);
   const [loadingHealth, setLoadingHealth] = useState(false);
   const [loadingCount, setLoadingCount] = useState(false);
 
-  // Latest books
   const [latest, setLatest] = useState<Buch[]>([]);
   const [latestErr, setLatestErr] = useState<string | null>(null);
   const [loadingLatest, setLoadingLatest] = useState(false);
-
-  useEffect(() => {
-    const t =
-      localStorage.getItem("access_token") ?? localStorage.getItem("token");
-    setToken(t);
-  }, []);
-
-  function logout() {
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("refresh_token");
-    localStorage.removeItem("token");
-    window.location.href = "/login";
-  }
 
   const loadHealth = async () => {
     setLoadingHealth(true);
@@ -318,7 +326,6 @@ export default function Page() {
   return (
     <AppLayout title="Dashboard">
       <Stack gap={6}>
-        {/* Hero / Status */}
         <Box
           borderWidth="1px"
           borderRadius="xl"
@@ -386,47 +393,47 @@ export default function Page() {
                   </Button>
                 </Link>
 
-                <Link
-                  as={NextLink}
-                  href="/items/new"
-                  _hover={{ textDecoration: "none" }}
-                >
-                  <Button
-                    w="full"
-                    variant="outline"
-                    size="lg"
-                    borderColor={isAdmin ? "purple.400" : "gray.300"}
-                    color={isAdmin ? "purple.700" : "gray.600"}
-                    disabled={!isAdmin}
+                {isAdmin ? (
+                  <Link
+                    as={NextLink}
+                    href="/items/new"
+                    _hover={{ textDecoration: "none" }}
                   >
-                    Neues Buch anlegen
-                  </Button>
-                </Link>
+                    <Button
+                      w="full"
+                      variant="outline"
+                      size="lg"
+                      borderColor="purple.400"
+                      color="purple.700"
+                    >
+                      Neues Buch anlegen
+                    </Button>
+                  </Link>
+                ) : (
+                  <Box borderWidth="1px" borderRadius="lg" p={3} bg="gray.50">
+                    <Text fontSize="sm" color="gray.600">
+                      „Neues Buch anlegen“ ist nur für Admin verfügbar.
+                    </Text>
+                  </Box>
+                )}
 
                 {token ? (
                   <Button onClick={logout} variant="ghost" size="sm">
                     Logout
                   </Button>
                 ) : null}
-
-                {!isAdmin ? (
-                  <Text fontSize="sm" color="gray.600">
-                    „Neues Buch“ ist nur für Admin verfügbar.
-                  </Text>
-                ) : null}
               </Stack>
             </Box>
           </Grid>
         </Box>
 
-        {/* Quick stats (ohne Stat-Komponente) */}
         <SimpleGrid columns={{ base: 1, md: 3 }} gap={4}>
           <Box borderWidth="1px" borderRadius="xl" bg="white" p={5}>
             <Text fontSize="sm" color="gray.600">
               Rollen
             </Text>
             <Text fontSize="2xl" fontWeight="bold" mt={1}>
-              {roles.length ? roles.length : 0}
+              {roles.length}
             </Text>
             <Text mt={2} fontSize="sm" color="gray.600">
               <Code>{roles.join(", ") || "-"}</Code>
@@ -458,158 +465,172 @@ export default function Page() {
           </Box>
         </SimpleGrid>
 
-        <Separator />
-
-        {/* Admin */}
         {isAdmin ? (
-          <Stack gap={4}>
-            <HStack justify="space-between" wrap="wrap" gap={3}>
-              <Heading size="md">Admin Tools</Heading>
-              <Button onClick={() => void loadAdminStuff()} variant="outline">
-                Alles neu laden
-              </Button>
-            </HStack>
+          <>
+            <Separator />
 
-            <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>
-              <Box borderWidth="1px" borderRadius="xl" bg="white" p={5}>
-                <HStack justify="space-between" mb={3} wrap="wrap" gap={2}>
-                  <Heading size="sm">Backend Health</Heading>
-                  <Button
-                    onClick={() => void loadHealth()}
-                    size="sm"
-                    loading={loadingHealth}
-                  >
-                    Prüfen
-                  </Button>
-                </HStack>
+            <Stack gap={4}>
+              <HStack justify="space-between" wrap="wrap" gap={3}>
+                <Heading size="md">Admin Tools</Heading>
+                <Button onClick={() => void loadAdminStuff()} variant="outline">
+                  Alles neu laden
+                </Button>
+              </HStack>
 
-                <Skeleton loading={loadingHealth}>
-                  <PrettyResult result={health} />
-                  {!health ? (
-                    <Text fontSize="sm" color="gray.600">
-                      Klicke auf „Prüfen“ oder „Alles neu laden“.
-                    </Text>
-                  ) : null}
-                </Skeleton>
-              </Box>
+              <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>
+                <Box borderWidth="1px" borderRadius="xl" bg="white" p={5}>
+                  <HStack justify="space-between" mb={3} wrap="wrap" gap={2}>
+                    <Heading size="sm">Backend Health</Heading>
+                    <Button
+                      onClick={() => void loadHealth()}
+                      size="sm"
+                      loading={loadingHealth}
+                    >
+                      Prüfen
+                    </Button>
+                  </HStack>
 
-              <Box borderWidth="1px" borderRadius="xl" bg="white" p={5}>
-                <HStack justify="space-between" mb={3} wrap="wrap" gap={2}>
-                  <Heading size="sm">Buch-Count</Heading>
-                  <Button
-                    onClick={() => void loadCount()}
-                    size="sm"
-                    loading={loadingCount}
-                  >
-                    Laden
-                  </Button>
-                </HStack>
+                  <Skeleton loading={loadingHealth}>
+                    <PrettyResult result={health} />
+                    {!health ? (
+                      <Text fontSize="sm" color="gray.600">
+                        Klicke auf „Prüfen“ oder „Alles neu laden“.
+                      </Text>
+                    ) : null}
+                  </Skeleton>
+                </Box>
 
-                <Skeleton loading={loadingCount}>
-                  <PrettyResult result={count} />
-                  {!count ? (
-                    <Text fontSize="sm" color="gray.600">
-                      Klicke auf „Laden“ oder „Alles neu laden“.
-                    </Text>
-                  ) : null}
-                </Skeleton>
-              </Box>
+                <Box borderWidth="1px" borderRadius="xl" bg="white" p={5}>
+                  <HStack justify="space-between" mb={3} wrap="wrap" gap={2}>
+                    <Heading size="sm">Buch-Count</Heading>
+                    <Button
+                      onClick={() => void loadCount()}
+                      size="sm"
+                      loading={loadingCount}
+                    >
+                      Laden
+                    </Button>
+                  </HStack>
 
-              <Box
-                borderWidth="1px"
-                borderRadius="xl"
-                bg="white"
-                p={5}
-                gridColumn={{ base: "auto", md: "1 / -1" }}
-              >
-                <HStack justify="space-between" mb={3} wrap="wrap" gap={2}>
-                  <Heading size="sm">Bücher (Top 5)</Heading>
-                  <Button
-                    onClick={() => void loadLatest()}
-                    size="sm"
-                    variant="outline"
-                    loading={loadingLatest}
-                  >
-                    Neu laden
-                  </Button>
-                </HStack>
+                  <Skeleton loading={loadingCount}>
+                    <PrettyResult result={count} />
+                    {!count ? (
+                      <Text fontSize="sm" color="gray.600">
+                        Klicke auf „Laden“ oder „Alles neu laden“.
+                      </Text>
+                    ) : null}
+                  </Skeleton>
+                </Box>
 
-                {loadingLatest ? (
-                  <Stack gap={3}>
-                    {Array.from({ length: 4 }).map((_, i) => (
-                      <Skeleton
-                        key={i}
-                        height="64px"
-                        borderRadius="md"
-                        loading
-                      />
-                    ))}
-                  </Stack>
-                ) : latestErr ? (
-                  <Alert.Root status="error" borderRadius="md">
-                    <Alert.Indicator />
-                    <Alert.Content>
-                      <Alert.Title>Fehler</Alert.Title>
-                      <Alert.Description>{latestErr}</Alert.Description>
-                    </Alert.Content>
-                  </Alert.Root>
-                ) : latest.length === 0 ? (
-                  <Text color="gray.600">Keine Bücher gefunden.</Text>
-                ) : (
-                  <Stack gap={3}>
-                    {latest.map((b) => (
-                      <Box
-                        key={b.id}
-                        borderWidth="1px"
-                        borderRadius="lg"
-                        p={4}
-                        bg="gray.50"
-                        display="flex"
-                        justifyContent="space-between"
-                        alignItems="center"
-                        gap={4}
-                      >
-                        <Box>
-                          <Text fontWeight="bold">
-                            {b.titel?.titel ?? "(ohne Titel)"}
-                          </Text>
-                          <Text fontSize="sm" color="gray.600">
-                            ISBN: {b.isbn ?? "-"} · Rating:{" "}
-                            {String(b.rating ?? "-")} · Art: {b.art ?? "-"}
-                          </Text>
-                          <Text fontSize="sm" color="gray.600">
-                            Lieferbar: {String(b.lieferbar ?? "-")} · Preis:{" "}
-                            {String(b.preis ?? "-")}
-                          </Text>
-                        </Box>
+                <Box
+                  borderWidth="1px"
+                  borderRadius="xl"
+                  bg="white"
+                  p={5}
+                  gridColumn={{ base: "auto", md: "1 / -1" }}
+                >
+                  <HStack justify="space-between" mb={3} wrap="wrap" gap={2}>
+                    <Heading size="sm">Bücher (Top 5)</Heading>
+                    <Button
+                      onClick={() => void loadLatest()}
+                      size="sm"
+                      variant="outline"
+                      loading={loadingLatest}
+                    >
+                      Neu laden
+                    </Button>
+                  </HStack>
 
-                        <Link
-                          as={NextLink}
-                          href={`/items/${b.id}`}
-                          _hover={{ textDecoration: "none" }}
+                  {loadingLatest ? (
+                    <Stack gap={3}>
+                      {Array.from({ length: 4 }).map((_, i) => (
+                        <Skeleton
+                          key={i}
+                          height="64px"
+                          borderRadius="md"
+                          loading
+                        />
+                      ))}
+                    </Stack>
+                  ) : latestErr ? (
+                    <Alert.Root status="error" borderRadius="md">
+                      <Alert.Indicator />
+                      <Alert.Content>
+                        <Alert.Title>Fehler</Alert.Title>
+                        <Alert.Description>{latestErr}</Alert.Description>
+                      </Alert.Content>
+                    </Alert.Root>
+                  ) : latest.length === 0 ? (
+                    <Text color="gray.600">Keine Bücher gefunden.</Text>
+                  ) : (
+                    <Stack gap={3}>
+                      {latest.map((b) => (
+                        <Box
+                          key={b.id}
+                          borderWidth="1px"
+                          borderRadius="lg"
+                          p={4}
+                          bg="gray.50"
+                          display="flex"
+                          justifyContent="space-between"
+                          alignItems="center"
+                          gap={4}
                         >
-                          <Button size="sm" variant="outline">
-                            Details
-                          </Button>
-                        </Link>
-                      </Box>
-                    ))}
-                  </Stack>
-                )}
-              </Box>
-            </SimpleGrid>
+                          <Box>
+                            <Text fontWeight="bold">
+                              {b.titel?.titel ?? "(ohne Titel)"}
+                            </Text>
 
-            {token ? (
-              <Box borderWidth="1px" borderRadius="xl" bg="white" p={5}>
-                <Heading size="sm" mb={2}>
-                  Debug (Token gekürzt)
-                </Heading>
-                <Code display="block" p={3} borderRadius="md">
-                  {token.slice(0, 40)}…{token.slice(-20)}
-                </Code>
-              </Box>
-            ) : null}
-          </Stack>
+                            <HStack
+                              fontSize="sm"
+                              color="gray.600"
+                              wrap="wrap"
+                              gap={2}
+                            >
+                              <Text>ISBN: {b.isbn ?? "-"}</Text>
+                              <Text>·</Text>
+                              <HStack gap={2}>
+                                <Text>Rating:</Text>
+                                <StarRating value={b.rating} />
+                              </HStack>
+                              <Text>·</Text>
+                              <Text>Art: {b.art ?? "-"}</Text>
+                            </HStack>
+
+                            <Text fontSize="sm" color="gray.600">
+                              Lieferbar: {String(b.lieferbar ?? "-")} · Preis:{" "}
+                              {String(b.preis ?? "-")}
+                            </Text>
+                          </Box>
+
+                          <Link
+                            as={NextLink}
+                            href={`/items/${b.id}`}
+                            _hover={{ textDecoration: "none" }}
+                          >
+                            <Button size="sm" variant="outline">
+                              Details
+                            </Button>
+                          </Link>
+                        </Box>
+                      ))}
+                    </Stack>
+                  )}
+                </Box>
+              </SimpleGrid>
+
+              {token ? (
+                <Box borderWidth="1px" borderRadius="xl" bg="white" p={5}>
+                  <Heading size="sm" mb={2}>
+                    Debug (Token gekürzt)
+                  </Heading>
+                  <Code display="block" p={3} borderRadius="md">
+                    {token.slice(0, 40)}…{token.slice(-20)}
+                  </Code>
+                </Box>
+              ) : null}
+            </Stack>
+          </>
         ) : null}
       </Stack>
     </AppLayout>
