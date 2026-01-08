@@ -90,7 +90,7 @@ Diese Anwendung ist eine **moderne Buchverwaltungs-SPA**, umgesetzt mit:
 * **PostgreSQL**
 * **Docker / Docker Compose**
 
-## 🏗 Architektur
+## Architektur
 
 ```
 Browser
@@ -161,7 +161,7 @@ Rollen werden aus dem **JWT (Keycloak)** gelesen.
 * Frontend nutzt HTTPS über Proxy / API-Routen
 * Für Entwicklung ist `NODE_TLS_REJECT_UNAUTHORIZED=0` konfiguriert
 
-## 🧹 Codequalität
+## Codequalität
 
 **pnpm**
 **ESLint**
