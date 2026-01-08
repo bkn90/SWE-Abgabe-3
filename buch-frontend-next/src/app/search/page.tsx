@@ -104,10 +104,7 @@ export default function SearchPage() {
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
-  const paged = buecher.slice(
-    (safePage - 1) * PAGE_SIZE,
-    safePage * PAGE_SIZE
-  );
+  const paged = buecher.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -311,7 +308,6 @@ export default function SearchPage() {
             </Stack>
           </Box>
         )}
-
       </Stack>
     </AppLayout>
   );
