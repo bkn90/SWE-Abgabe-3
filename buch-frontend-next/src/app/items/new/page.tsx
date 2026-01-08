@@ -1,9 +1,10 @@
 "use client";
 
 import { chakra } from "@chakra-ui/react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import NextLink from "next/link";
 import { useRouter } from "next/navigation";
+import { useMutation } from "@apollo/client/react";
 import {
   Alert,
   Badge,
@@ -20,6 +21,7 @@ import {
 } from "@chakra-ui/react";
 import { AppLayout } from "@/components/AppLayout";
 import { StarRatingInput } from "@/components/StarRatingInput";
+import { CREATE_BUCH_MUTATION } from "@/graphql/operations";
 
 const Label = chakra("label");
 
@@ -68,18 +70,9 @@ function extractRoles(payload: Record<string, unknown> | null): string[] {
   return Array.from(new Set(roles));
 }
 
-function getErrorMessage(err: unknown): string {
-  if (err instanceof Error) return err.message;
-  if (typeof err === "string") return err;
-  return "Unbekannter Fehler";
-}
-
-type CreateResponse = {
-  ok: boolean;
-  status: number;
-  body: unknown;
-  raw?: string;
-};
+type ResultBox =
+  | { ok: true; status: 200; body: unknown }
+  | { ok: false; status: number; body: unknown };
 
 function StatusBadge({
   label,
@@ -101,10 +94,32 @@ function StatusBadge({
   );
 }
 
+type CreateMutationData = { create?: { id?: string | null } | null };
+type CreateMutationVars = {
+  input: {
+    isbn?: string | null;
+    rating?: number | null;
+    art?: Art | null;
+    preis?: number | null;
+    lieferbar?: boolean | null;
+    datum?: string | null;
+    homepage?: string | null;
+    schlagwoerter?: string[] | null;
+    titel: { titel: string; untertitel?: string | null };
+  };
+};
+
+function getToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("access_token") ?? localStorage.getItem("token");
+}
+
 export default function NewBookPage() {
   const router = useRouter();
 
-  const [token, setToken] = useState<string | null>(null);
+  // Lazy init
+  const [token, setToken] = useState<string | null>(() => getToken());
+
   const payload = useMemo(() => (token ? safeParseJwt(token) : null), [token]);
   const roles = useMemo(() => extractRoles(payload), [payload]);
   const isAdmin = roles.includes("admin");
@@ -123,75 +138,106 @@ export default function NewBookPage() {
   const [untertitel, setUntertitel] = useState("");
   const [isbn, setIsbn] = useState("");
   const [art, setArt] = useState<Art>("EPUB");
-  const [rating, setRating] = useState<number>(1);
+  const [rating, setRating] = useState<number>(3);
   const [preis, setPreis] = useState<number>(9.99);
   const [datum, setDatum] = useState<string>(""); // YYYY-MM-DD
   const [lieferbar, setLieferbar] = useState(true);
   const [homepage, setHomepage] = useState("https://acme.at");
   const [schlagwoerter, setSchlagwoerter] = useState("JAVA");
 
-  const [submitting, setSubmitting] = useState(false);
-  const [result, setResult] = useState<CreateResponse | null>(null);
+  const [result, setResult] = useState<ResultBox | null>(null);
 
   const datumIso = datum
     ? new Date(`${datum}T00:00:00.000Z`).toISOString()
     : null;
 
-  useEffect(() => {
-    const t =
-      localStorage.getItem("access_token") ?? localStorage.getItem("token");
-    setToken(t);
-  }, []);
+  const [createBuch, { loading: creating }] = useMutation<
+    CreateMutationData,
+    CreateMutationVars
+  >(CREATE_BUCH_MUTATION);
 
   const onSubmit = async () => {
-    setSubmitting(true);
     setResult(null);
 
+    if (!token) {
+      setResult({
+        ok: false,
+        status: 401,
+        body: "Kein Token gefunden. Bitte einloggen.",
+      });
+      return;
+    }
+    if (!isAdmin) {
+      setResult({
+        ok: false,
+        status: 403,
+        body: "Kein Zugriff: Nur Admin darf Bücher anlegen.",
+      });
+      return;
+    }
+    if (!titel.trim()) {
+      setResult({ ok: false, status: 400, body: "Titel ist ein Pflichtfeld." });
+      return;
+    }
+
+    const input: CreateMutationVars["input"] = {
+      isbn: isbn.trim() || null,
+      rating,
+      art,
+      preis,
+      lieferbar,
+      datum: datumIso,
+      homepage: homepage.trim() || null,
+      schlagwoerter: schlagwoerter
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean),
+      titel: {
+        titel: titel.trim(),
+        untertitel: untertitel.trim() ? untertitel.trim() : null,
+      },
+    };
+
     try {
-      if (!token) {
-        setResult({
-          ok: false,
-          status: 401,
-          body: "Kein Token gefunden. Bitte einloggen.",
-        });
-        return;
-      }
-
-      const payloadBody = {
-        isbn,
-        rating,
-        art, // Enum: EPUB | HARDCOVER | PAPERBACK
-        preis,
-        lieferbar,
-        datum: datumIso,
-        homepage,
-        schlagwoerter: schlagwoerter
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean),
-        titel: {
-          titel,
-          untertitel: untertitel || null,
+      const res = await createBuch({
+        variables: { input },
+        context: {
+          headers: {
+            authorization: `Bearer ${token}`,
+          },
         },
-      };
-
-      const r = await fetch("/api/buecher", {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payloadBody),
       });
 
-      const json = (await r.json()) as CreateResponse;
-      setResult(json);
+      const id = res.data?.create?.id ?? null;
+
+      setResult({
+        ok: true,
+        status: 200,
+        body: { message: "Buch angelegt", id, inputSent: input },
+      });
+
+      // optional: direkt zur Detailseite
+      // if (id) {
+      //   router.push(`/items/${id}`);
+      //   router.refresh();
+      // }
     } catch (e: unknown) {
-      setResult({ ok: false, status: 0, body: getErrorMessage(e) });
-    } finally {
-      setSubmitting(false);
+      const message =
+        e instanceof Error
+          ? e.message
+          : "Unbekannter Fehler bei GraphQL Mutation.";
+      setResult({ ok: false, status: 500, body: message });
     }
   };
+
+  function logout() {
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
+    localStorage.removeItem("token");
+    setToken(null);
+    router.push("/login");
+    router.refresh();
+  }
 
   return (
     <AppLayout title="Neues Buch">
@@ -266,15 +312,11 @@ export default function NewBookPage() {
                 <Button variant="outline">Zur Suche</Button>
               </Link>
 
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  router.push("/");
-                  router.refresh();
-                }}
-              >
-                Dashboard
-              </Button>
+              {token ? (
+                <Button variant="outline" onClick={logout}>
+                  Logout
+                </Button>
+              ) : null}
             </HStack>
           </Stack>
         </Box>
@@ -320,10 +362,7 @@ export default function NewBookPage() {
                 </Box>
 
                 <Box flex="1" minW="240px">
-                  <SimpleField
-                    label="Art"
-                    hint="Enum: EPUB, HARDCOVER, PAPERBACK"
-                  >
+                  <SimpleField label="Art" hint="Enum">
                     <select
                       value={art}
                       onChange={(e) => setArt(e.target.value as Art)}
@@ -364,7 +403,7 @@ export default function NewBookPage() {
                 </Box>
               </HStack>
 
-              <SimpleField label="Datum" hint="Kalenderauswahl (YYYY-MM-DD)">
+              <SimpleField label="Datum" hint="Kalenderauswahl">
                 <Input
                   type="date"
                   value={datum}
@@ -405,10 +444,10 @@ export default function NewBookPage() {
                 <Button
                   colorScheme="purple"
                   onClick={() => void onSubmit()}
-                  loading={submitting}
+                  loading={creating}
                   disabled={!titel.trim()}
                 >
-                  Buch anlegen
+                  Buch anlegen (GraphQL)
                 </Button>
 
                 <Link
@@ -425,7 +464,7 @@ export default function NewBookPage() {
                   <Text fontWeight="semibold">
                     Ergebnis:{" "}
                     <Text as="span" color={result.ok ? "green.600" : "red.600"}>
-                      {result.ok ? "OK" : "Fehler"} (HTTP {result.status})
+                      {result.ok ? "OK" : "Fehler"} (Status {result.status})
                     </Text>
                   </Text>
                   <Code
