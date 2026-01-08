@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
   req: NextRequest,
-  ctx: { params: Promise<{ id: string }> }
+  ctx: { params: Promise<{ id: string }> },
 ) {
   // Next (aktuelle Version): params ist ein Promise
   const { id } = await ctx.params;
@@ -29,7 +29,8 @@ export async function GET(
   return new NextResponse(body, {
     status: res.status,
     headers: {
-      "content-type": res.headers.get("content-type") ?? "application/json; charset=utf-8",
+      "content-type":
+        res.headers.get("content-type") ?? "application/json; charset=utf-8",
     },
   });
 }
