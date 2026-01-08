@@ -3,11 +3,11 @@
 import React from "react";
 import { useParams } from "next/navigation";
 import { useQuery } from "@apollo/client/react";
-import { Box, Heading, HStack, Stack, Text } from "@chakra-ui/react";
-import { StarRating } from "@/components/StarRating";
+import { Box, HStack, Stack, Text } from "@chakra-ui/react";
 import { AppLayout } from "@/components/AppLayout";
 import { ErrorAlert } from "@/components/ErrorAlert";
 import { BUCH_QUERY } from "@/graphql/operations";
+import { StarRating } from "@/components/StarRating";
 
 type Titel = { titel?: string | null; untertitel?: string | null };
 
@@ -41,39 +41,48 @@ export default function BuchDetailPage() {
   const buch = data?.buch ?? null;
 
   return (
-    <AppLayout title="Detail">
+    <AppLayout title="Buchdetails">
       <Stack gap={6}>
-        <Heading size="lg">Buch-Detail</Heading>
-
         {error && <ErrorAlert description={error.message} />}
         {loading && <Text>Lade…</Text>}
         {!loading && !error && !buch && <Text>Nicht gefunden.</Text>}
 
         {buch && (
-          <Box borderWidth="1px" rounded="lg" p={6}>
-            <Text fontWeight="bold" mb={2}>
-              {buch.titel?.titel ?? "(ohne Titel)"}
-            </Text>
-            <Text>Untertitel: {buch.titel?.untertitel ?? "-"}</Text>
-            <Text>ISBN: {buch.isbn ?? "-"}</Text>
-            <HStack>
-              <Text>Rating:</Text>
-              <StarRating value={buch.rating} size="20px" />
-            </HStack>
-            <Text>Art: {buch.art ?? "-"}</Text>
-            <Text>Preis: {String(buch.preis ?? "-")}</Text>
-            <Text>Lieferbar: {String(buch.lieferbar ?? "-")}</Text>
-            <Text>Homepage: {buch.homepage ?? "-"}</Text>
-            <Text>Rabatt: {String(buch.rabatt ?? "-")}</Text>
-            <Text>Version: {String(buch.version ?? "-")}</Text>
-            <Box mt={4}>
-              <Text fontWeight="bold">Schlagwörter</Text>
-              <Text>
-                {Array.isArray(buch.schlagwoerter)
-                  ? buch.schlagwoerter.join(", ")
-                  : "-"}
+          <Box
+            borderWidth="1px"
+            borderRadius="xl"
+            bg="white"
+            p={{ base: 4, md: 6 }}
+          >
+            <Stack gap={3}>
+              <Text fontWeight="bold" fontSize="lg">
+                {buch.titel?.titel ?? "(ohne Titel)"}
               </Text>
-            </Box>
+
+              <Text color="gray.600">{buch.titel?.untertitel ?? "—"}</Text>
+
+              <HStack>
+                <Text fontWeight="semibold">Rating:</Text>
+                <StarRating value={buch.rating} size="20px" />
+              </HStack>
+
+              <Text>ISBN: {buch.isbn ?? "-"}</Text>
+              <Text>Art: {buch.art ?? "-"}</Text>
+              <Text>Preis: {String(buch.preis ?? "-")}</Text>
+              <Text>Lieferbar: {String(buch.lieferbar ?? "-")}</Text>
+              <Text>Homepage: {buch.homepage ?? "-"}</Text>
+              <Text>Rabatt: {String(buch.rabatt ?? "-")}</Text>
+              <Text>Version: {String(buch.version ?? "-")}</Text>
+
+              <Box>
+                <Text fontWeight="semibold">Schlagwörter</Text>
+                <Text color="gray.600">
+                  {Array.isArray(buch.schlagwoerter)
+                    ? buch.schlagwoerter.join(", ")
+                    : "-"}
+                </Text>
+              </Box>
+            </Stack>
           </Box>
         )}
       </Stack>

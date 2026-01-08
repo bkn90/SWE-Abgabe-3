@@ -49,14 +49,12 @@ function isAdminFromToken(token: string | null): boolean {
   const payload = safeParseJwtPayload(token);
   if (!payload) return false;
 
-  // realm_access.roles
   const realmAccess = payload["realm_access"];
   if (realmAccess && typeof realmAccess === "object") {
     const roles = (realmAccess as Record<string, unknown>)["roles"];
     if (Array.isArray(roles) && roles.includes("admin")) return true;
   }
 
-  // resource_access["nest-client"].roles
   const resourceAccess = payload["resource_access"];
   if (resourceAccess && typeof resourceAccess === "object") {
     const client = (resourceAccess as Record<string, unknown>)["nest-client"];
@@ -69,11 +67,10 @@ function isAdminFromToken(token: string | null): boolean {
   return false;
 }
 
-// Active highlight auch bei Unterseiten:
-// z.B. /items/123 -> "Suche" (oder Items) aktiv lassen
 function isActivePath(pathname: string, href: string): boolean {
   if (pathname === href) return true;
 
+  // Detailseiten /items/* sollen "Suche" aktiv lassen
   if (href === "/search" && pathname.startsWith("/items/")) return true;
 
   return false;
@@ -219,19 +216,11 @@ function BreadcrumbsBar({ crumbs }: { crumbs: Crumb[] }) {
 }
 
 function buildCrumbs(pathname: string): Crumb[] {
-  // Beispiele:
-  // "/" => Home
-  // "/search" => Home / Suche
-  // "/items/new" => Home / Bücher / Neu
-  // "/items/123" => Home / Bücher / 123
-
   if (!pathname || pathname === "/") return [{ label: "Home", href: "/" }];
 
   const parts = pathname.split("/").filter(Boolean);
-
   const crumbs: Crumb[] = [{ label: "Home", href: "/" }];
 
-  // Map für schöneren Text
   const labelMap: Record<string, string> = {
     search: "Suche",
     items: "Bücher",
@@ -239,19 +228,12 @@ function buildCrumbs(pathname: string): Crumb[] {
     login: "Login",
   };
 
-  // Akkumulierte URL
   let acc = "";
   for (let i = 0; i < parts.length; i++) {
     const seg = parts[i];
     acc += `/${seg}`;
-
     const label = labelMap[seg] ?? seg;
-
-    // Letztes Element: kein Link
     const isLast = i === parts.length - 1;
-
-    // IDs (z.B. 123) nicht unbedingt als Link, aber du kannst es ändern
-    // Hier: Link nur, wenn nicht last und nicht "id"
     const looksLikeId = /^[0-9a-fA-F-]{6,}$/.test(seg) || /^[0-9]+$/.test(seg);
 
     crumbs.push({
@@ -301,7 +283,6 @@ export function AppLayout({
 
   return (
     <Box minH="100vh" bg="gray.50">
-      {/* Sticky Topbar */}
       <Box
         position="sticky"
         top={0}
@@ -311,7 +292,6 @@ export function AppLayout({
       >
         <Container maxW="container.lg" py={3}>
           <Flex align="center" gap={3}>
-            {/* Brand */}
             <Link
               as={NextLink}
               href="/"
@@ -326,18 +306,15 @@ export function AppLayout({
               </Text>
             </Link>
 
-            {/* Desktop Nav */}
             <Box display={{ base: "none", md: "block" }} ms="auto">
               <NavButtons
                 navItems={navItems}
                 pathname={pathname}
                 token={token}
                 onLogout={logout}
-                variant="desktop"
               />
             </Box>
 
-            {/* Mobile Hamburger */}
             <Box display={{ base: "block", md: "none" }} ms="auto">
               <IconButton
                 aria-label="Menü öffnen"
@@ -351,7 +328,6 @@ export function AppLayout({
         </Container>
       </Box>
 
-      {/* Mobile Drawer */}
       <Drawer.Root
         open={menuOpen}
         onOpenChange={(e) => setMenuOpen(e.open)}
@@ -388,11 +364,9 @@ export function AppLayout({
         </Drawer.Positioner>
       </Drawer.Root>
 
-      {/* Content */}
       <Container maxW="container.lg" py={{ base: 6, md: 8 }}>
         <Heading size="lg">{title}</Heading>
         <BreadcrumbsBar crumbs={crumbs} />
-
         <Box mt={6}>{children}</Box>
       </Container>
     </Box>

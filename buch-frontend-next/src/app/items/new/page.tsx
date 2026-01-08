@@ -3,20 +3,28 @@
 import { chakra } from "@chakra-ui/react";
 import { useEffect, useMemo, useState } from "react";
 import NextLink from "next/link";
+import { useRouter } from "next/navigation";
 import {
+  Alert,
+  Badge,
   Box,
   Button,
   Code,
-  Container,
-  Heading,
   HStack,
   Input,
   Link,
+  Separator,
+  Stack,
   Text,
   Textarea,
 } from "@chakra-ui/react";
+import { AppLayout } from "@/components/AppLayout";
+import { StarRatingInput } from "@/components/StarRatingInput";
 
 const Label = chakra("label");
+
+const ART_OPTIONS = ["EPUB", "HARDCOVER", "PAPERBACK"] as const;
+type Art = (typeof ART_OPTIONS)[number];
 
 function safeParseJwt(token: string): Record<string, unknown> | null {
   try {
@@ -37,7 +45,6 @@ function safeParseJwt(token: string): Record<string, unknown> | null {
 
 function extractRoles(payload: Record<string, unknown> | null): string[] {
   if (!payload) return [];
-
   const roles: string[] = [];
 
   const realmAccess = payload["realm_access"];
@@ -74,9 +81,30 @@ type CreateResponse = {
   raw?: string;
 };
 
-export default function NewBookPage() {
-  const [token, setToken] = useState<string | null>(null);
+function StatusBadge({
+  label,
+  tone,
+}: {
+  label: string;
+  tone: "green" | "red" | "orange" | "gray" | "blue" | "purple";
+}) {
+  return (
+    <Badge
+      px={2}
+      py={1}
+      borderRadius="md"
+      bg={`${tone}.100`}
+      color={`${tone}.800`}
+    >
+      {label}
+    </Badge>
+  );
+}
 
+export default function NewBookPage() {
+  const router = useRouter();
+
+  const [token, setToken] = useState<string | null>(null);
   const payload = useMemo(() => (token ? safeParseJwt(token) : null), [token]);
   const roles = useMemo(() => extractRoles(payload), [payload]);
   const isAdmin = roles.includes("admin");
@@ -94,9 +122,10 @@ export default function NewBookPage() {
   const [titel, setTitel] = useState("");
   const [untertitel, setUntertitel] = useState("");
   const [isbn, setIsbn] = useState("");
-  const [art, setArt] = useState("EPUB");
+  const [art, setArt] = useState<Art>("EPUB");
   const [rating, setRating] = useState<number>(1);
   const [preis, setPreis] = useState<number>(9.99);
+  const [datum, setDatum] = useState<string>(""); // YYYY-MM-DD
   const [lieferbar, setLieferbar] = useState(true);
   const [homepage, setHomepage] = useState("https://acme.at");
   const [schlagwoerter, setSchlagwoerter] = useState("JAVA");
@@ -104,18 +133,15 @@ export default function NewBookPage() {
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<CreateResponse | null>(null);
 
+  const datumIso = datum
+    ? new Date(`${datum}T00:00:00.000Z`).toISOString()
+    : null;
+
   useEffect(() => {
     const t =
       localStorage.getItem("access_token") ?? localStorage.getItem("token");
     setToken(t);
   }, []);
-
-  const logout = () => {
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("refresh_token");
-    localStorage.removeItem("token");
-    window.location.href = "/login";
-  };
 
   const onSubmit = async () => {
     setSubmitting(true);
@@ -134,9 +160,10 @@ export default function NewBookPage() {
       const payloadBody = {
         isbn,
         rating,
-        art,
+        art, // Enum: EPUB | HARDCOVER | PAPERBACK
         preis,
         lieferbar,
+        datum: datumIso,
         homepage,
         schlagwoerter: schlagwoerter
           .split(",")
@@ -167,216 +194,69 @@ export default function NewBookPage() {
   };
 
   return (
-    <Box bg="gray.50" minH="100vh" py={10}>
-      <Container maxW="4xl">
-        <HStack
-          justify="space-between"
-          align="start"
-          mb={8}
-          wrap="wrap"
-          gap={4}
-        >
-          <Box>
-            <Heading>Neues Buch anlegen</Heading>
-            <Text mt={2} color="gray.600">
-              Nur Admin darf Bücher anlegen.
-            </Text>
-          </Box>
-
-          <HStack gap={3}>
-            <Link as={NextLink} href="/" _hover={{ textDecoration: "none" }}>
-              <Button variant="outline">Dashboard</Button>
-            </Link>
-            <Button onClick={logout} variant="outline">
-              Logout
-            </Button>
-          </HStack>
-        </HStack>
-
-        {/* Zugriffskarte */}
+    <AppLayout title="Neues Buch">
+      <Stack gap={6}>
+        {/* Zugriff / Status */}
         <Box
           borderWidth="1px"
-          borderRadius="lg"
-          p={4}
+          borderRadius="xl"
           bg="white"
-          boxShadow="md"
-          mb={6}
+          p={{ base: 4, md: 6 }}
         >
-          <Text fontWeight="semibold">
-            Nutzer: <Code>{username ?? "-"}</Code>
-          </Text>
-          <Text mt={2}>
-            Rollen: <Code>{roles.join(", ") || "-"}</Code>
-          </Text>
+          <Stack gap={3}>
+            <HStack gap={2} wrap="wrap">
+              <StatusBadge
+                label={token ? "Eingeloggt" : "Nicht eingeloggt"}
+                tone={token ? "green" : "red"}
+              />
+              <StatusBadge
+                label={isAdmin ? "Admin" : "User"}
+                tone={isAdmin ? "purple" : "blue"}
+              />
+              <Text fontSize="sm" color="gray.600">
+                Nutzer: <Code>{username ?? "-"}</Code>
+              </Text>
+            </HStack>
 
-          {!token && (
-            <Box
-              mt={3}
-              borderWidth="1px"
-              borderColor="red.300"
-              bg="red.50"
-              borderRadius="md"
-              p={3}
-            >
-              <Text fontWeight="semibold" color="red.700">
-                Kein Token gefunden – bitte einloggen.
-              </Text>
-              <Link
-                as={NextLink}
-                href="/login"
-                _hover={{ textDecoration: "none" }}
-              >
-                <Button mt={3} colorScheme="teal">
-                  Zum Login
-                </Button>
-              </Link>
-            </Box>
-          )}
+            <Text fontSize="sm" color="gray.600">
+              Rollen: <Code>{roles.join(", ") || "-"}</Code>
+            </Text>
 
-          {token && !isAdmin && (
-            <Box
-              mt={3}
-              borderWidth="1px"
-              borderColor="red.300"
-              bg="red.50"
-              borderRadius="md"
-              p={3}
-            >
-              <Text fontWeight="semibold" color="red.700">
-                Kein Zugriff: Nur Admin
-              </Text>
-              <Text fontSize="sm" mt={1}>
-                Du bist eingeloggt, aber hast keine <Code>admin</Code>-Rolle im
-                Token.
-              </Text>
-              <HStack mt={3}>
+            {!token ? (
+              <Alert.Root status="warning" borderRadius="md">
+                <Alert.Indicator />
+                <Alert.Content>
+                  <Alert.Title>Login erforderlich</Alert.Title>
+                  <Alert.Description>
+                    Kein Token gefunden – bitte einloggen.
+                  </Alert.Description>
+                </Alert.Content>
+              </Alert.Root>
+            ) : null}
+
+            {token && !isAdmin ? (
+              <Alert.Root status="error" borderRadius="md">
+                <Alert.Indicator />
+                <Alert.Content>
+                  <Alert.Title>Kein Zugriff</Alert.Title>
+                  <Alert.Description>
+                    Du bist eingeloggt, aber hast keine <Code>admin</Code>
+                    -Rolle.
+                  </Alert.Description>
+                </Alert.Content>
+              </Alert.Root>
+            ) : null}
+
+            <HStack gap={2} wrap="wrap">
+              {!token ? (
                 <Link
                   as={NextLink}
-                  href="/search"
+                  href="/login"
                   _hover={{ textDecoration: "none" }}
                 >
-                  <Button colorScheme="teal" variant="outline">
-                    Zur Suche
-                  </Button>
+                  <Button colorScheme="teal">Zum Login</Button>
                 </Link>
-                <Link
-                  as={NextLink}
-                  href="/"
-                  _hover={{ textDecoration: "none" }}
-                >
-                  <Button variant="outline">Dashboard</Button>
-                </Link>
-              </HStack>
-            </Box>
-          )}
-        </Box>
-
-        {/* Formular: nur Admin */}
-        {token && isAdmin && (
-          <Box bg="white" borderRadius="lg" boxShadow="md" p={6}>
-            <Heading size="md" mb={4}>
-              Buchdaten
-            </Heading>
-
-            <SimpleField label="Titel" hint="Pflichtfeld">
-              <Input
-                value={titel}
-                onChange={(e) => setTitel(e.target.value)}
-                placeholder="z.B. Clean Code"
-              />
-            </SimpleField>
-
-            <SimpleField label="Untertitel" hint="Optional">
-              <Input
-                value={untertitel}
-                onChange={(e) => setUntertitel(e.target.value)}
-                placeholder="z.B. A Handbook of Agile Software Craftsmanship"
-              />
-            </SimpleField>
-
-            <HStack gap={4} align="start" flexWrap="wrap">
-              <Box flex="1" minW="240px">
-                <SimpleField label="ISBN" hint="z.B. 978-3-...">
-                  <Input
-                    value={isbn}
-                    onChange={(e) => setIsbn(e.target.value)}
-                    placeholder="978-..."
-                  />
-                </SimpleField>
-              </Box>
-
-              <Box flex="1" minW="240px">
-                <SimpleField label="Art" hint='z.B. "EPUB", "HARDCOVER"'>
-                  <Input value={art} onChange={(e) => setArt(e.target.value)} />
-                </SimpleField>
-              </Box>
-            </HStack>
-
-            <HStack gap={4} align="start" flexWrap="wrap">
-              <Box flex="1" minW="240px">
-                <SimpleField label="Rating" hint="1-5">
-                  <Input
-                    type="number"
-                    value={rating}
-                    onChange={(e) => setRating(Number(e.target.value))}
-                    min={1}
-                    max={5}
-                  />
-                </SimpleField>
-              </Box>
-
-              <Box flex="1" minW="240px">
-                <SimpleField label="Preis" hint="z.B. 19.99">
-                  <Input
-                    type="number"
-                    value={preis}
-                    onChange={(e) => setPreis(Number(e.target.value))}
-                    step="0.01"
-                    min={0}
-                  />
-                </SimpleField>
-              </Box>
-            </HStack>
-
-            <SimpleField label="Homepage" hint="URL">
-              <Input
-                value={homepage}
-                onChange={(e) => setHomepage(e.target.value)}
-              />
-            </SimpleField>
-
-            <SimpleField
-              label="Schlagwörter"
-              hint='Komma-separiert, z.B. "JAVA, TYPESCRIPT"'
-            >
-              <Textarea
-                value={schlagwoerter}
-                onChange={(e) => setSchlagwoerter(e.target.value)}
-              />
-            </SimpleField>
-
-            {/* Checkbox + Label (Chakra v3 kompatibel) */}
-            <HStack mt={3}>
-              <input
-                id="lieferbar"
-                type="checkbox"
-                checked={lieferbar}
-                onChange={(e) => setLieferbar(e.target.checked)}
-              />
-              <Label htmlFor="lieferbar" cursor="pointer">
-                Lieferbar
-              </Label>
-            </HStack>
-
-            <HStack mt={6} gap={3}>
-              <Button
-                colorScheme="purple"
-                onClick={() => void onSubmit()}
-                loading={submitting}
-                disabled={!titel.trim()}
-              >
-                Buch anlegen
-              </Button>
+              ) : null}
 
               <Link
                 as={NextLink}
@@ -385,31 +265,185 @@ export default function NewBookPage() {
               >
                 <Button variant="outline">Zur Suche</Button>
               </Link>
-            </HStack>
 
-            {result && (
-              <Box mt={6}>
-                <Text fontWeight="semibold">
-                  Ergebnis:{" "}
-                  <Text as="span" color={result.ok ? "green.600" : "red.600"}>
-                    {result.ok ? "OK" : "Fehler"} (HTTP {result.status})
-                  </Text>
-                </Text>
-                <Code
-                  display="block"
-                  whiteSpace="pre"
-                  p={3}
-                  borderRadius="md"
-                  mt={2}
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  router.push("/");
+                  router.refresh();
+                }}
+              >
+                Dashboard
+              </Button>
+            </HStack>
+          </Stack>
+        </Box>
+
+        <Separator />
+
+        {/* Formular nur Admin */}
+        {token && isAdmin ? (
+          <Box
+            borderWidth="1px"
+            borderRadius="xl"
+            bg="white"
+            p={{ base: 4, md: 6 }}
+          >
+            <Stack gap={4}>
+              <Text fontWeight="semibold">Buchdaten</Text>
+
+              <SimpleField label="Titel" hint="Pflichtfeld">
+                <Input
+                  value={titel}
+                  onChange={(e) => setTitel(e.target.value)}
+                  placeholder="z.B. Clean Code"
+                />
+              </SimpleField>
+
+              <SimpleField label="Untertitel" hint="Optional">
+                <Input
+                  value={untertitel}
+                  onChange={(e) => setUntertitel(e.target.value)}
+                  placeholder="z.B. A Handbook of Agile Software Craftsmanship"
+                />
+              </SimpleField>
+
+              <HStack gap={4} align="start" flexWrap="wrap">
+                <Box flex="1" minW="240px">
+                  <SimpleField label="ISBN" hint="z.B. 978-3-...">
+                    <Input
+                      value={isbn}
+                      onChange={(e) => setIsbn(e.target.value)}
+                      placeholder="978-..."
+                    />
+                  </SimpleField>
+                </Box>
+
+                <Box flex="1" minW="240px">
+                  <SimpleField
+                    label="Art"
+                    hint="Enum: EPUB, HARDCOVER, PAPERBACK"
+                  >
+                    <select
+                      value={art}
+                      onChange={(e) => setArt(e.target.value as Art)}
+                      style={{
+                        border: "1px solid",
+                        borderRadius: "8px",
+                        padding: "8px",
+                        width: "100%",
+                      }}
+                    >
+                      {ART_OPTIONS.map((v) => (
+                        <option key={v} value={v}>
+                          {v}
+                        </option>
+                      ))}
+                    </select>
+                  </SimpleField>
+                </Box>
+              </HStack>
+
+              <HStack gap={4} align="start" flexWrap="wrap">
+                <Box flex="1" minW="240px">
+                  <SimpleField label="Rating" hint="1–5 Sterne">
+                    <StarRatingInput value={rating} onChange={setRating} />
+                  </SimpleField>
+                </Box>
+
+                <Box flex="1" minW="240px">
+                  <SimpleField label="Preis" hint="z.B. 19.99">
+                    <Input
+                      type="number"
+                      value={preis}
+                      onChange={(e) => setPreis(Number(e.target.value))}
+                      step="0.01"
+                      min={0}
+                    />
+                  </SimpleField>
+                </Box>
+              </HStack>
+
+              <SimpleField label="Datum" hint="Kalenderauswahl (YYYY-MM-DD)">
+                <Input
+                  type="date"
+                  value={datum}
+                  onChange={(e) => setDatum(e.target.value)}
+                />
+              </SimpleField>
+
+              <SimpleField label="Homepage" hint="URL">
+                <Input
+                  value={homepage}
+                  onChange={(e) => setHomepage(e.target.value)}
+                />
+              </SimpleField>
+
+              <SimpleField
+                label="Schlagwörter"
+                hint='Komma-separiert, z.B. "JAVA, TYPESCRIPT"'
+              >
+                <Textarea
+                  value={schlagwoerter}
+                  onChange={(e) => setSchlagwoerter(e.target.value)}
+                />
+              </SimpleField>
+
+              <HStack>
+                <input
+                  id="lieferbar"
+                  type="checkbox"
+                  checked={lieferbar}
+                  onChange={(e) => setLieferbar(e.target.checked)}
+                />
+                <Label htmlFor="lieferbar" cursor="pointer">
+                  Lieferbar
+                </Label>
+              </HStack>
+
+              <HStack gap={3} wrap="wrap">
+                <Button
+                  colorScheme="purple"
+                  onClick={() => void onSubmit()}
+                  loading={submitting}
+                  disabled={!titel.trim()}
                 >
-                  {JSON.stringify(result.body, null, 2)}
-                </Code>
-              </Box>
-            )}
+                  Buch anlegen
+                </Button>
+
+                <Link
+                  as={NextLink}
+                  href="/search"
+                  _hover={{ textDecoration: "none" }}
+                >
+                  <Button variant="outline">Zur Suche</Button>
+                </Link>
+              </HStack>
+
+              {result ? (
+                <Box>
+                  <Text fontWeight="semibold">
+                    Ergebnis:{" "}
+                    <Text as="span" color={result.ok ? "green.600" : "red.600"}>
+                      {result.ok ? "OK" : "Fehler"} (HTTP {result.status})
+                    </Text>
+                  </Text>
+                  <Code
+                    display="block"
+                    whiteSpace="pre"
+                    p={3}
+                    borderRadius="md"
+                    mt={2}
+                  >
+                    {JSON.stringify(result.body, null, 2)}
+                  </Code>
+                </Box>
+              ) : null}
+            </Stack>
           </Box>
-        )}
-      </Container>
-    </Box>
+        ) : null}
+      </Stack>
+    </AppLayout>
   );
 }
 
@@ -423,13 +457,13 @@ function SimpleField({
   children: React.ReactNode;
 }) {
   return (
-    <Box mb={4}>
+    <Box>
       <Text fontWeight="semibold">{label}</Text>
-      {hint && (
+      {hint ? (
         <Text fontSize="sm" color="gray.600" mb={2}>
           {hint}
         </Text>
-      )}
+      ) : null}
       {children}
     </Box>
   );
