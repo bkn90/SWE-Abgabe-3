@@ -17,6 +17,7 @@ import {
 import { AppLayout } from "@/components/AppLayout";
 import { ErrorAlert } from "@/components/ErrorAlert";
 import { BUECHER_QUERY } from "@/graphql/operations";
+import { StarRating } from "@/components/StarRating";
 
 type Titel = { titel?: string | null; untertitel?: string | null };
 
@@ -248,10 +249,18 @@ export default function SearchPage() {
                       {b.titel?.titel ?? "(ohne Titel)"}
                     </Text>
 
-                    <Text fontSize="sm">
-                      ISBN: {b.isbn ?? "-"} · Rating: {String(b.rating ?? "-")}
-                      {" · "}Art: {b.art ?? "-"}
-                    </Text>
+                    <HStack fontSize="sm" color="gray.600" wrap="wrap" gap={2}>
+                      <Text>ISBN: {b.isbn ?? "-"}</Text>
+                      <Text>·</Text>
+
+                      <HStack gap={2}>
+                        <Text>Rating:</Text>
+                        <StarRating value={b.rating} />
+                      </HStack>
+
+                      <Text>·</Text>
+                      <Text>Art: {b.art ?? "-"}</Text>
+                    </HStack>
 
                     <Text fontSize="sm">
                       Lieferbar: {String(b.lieferbar ?? "-")} · Preis:{" "}

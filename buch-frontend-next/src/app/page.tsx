@@ -19,6 +19,7 @@ import {
   Text,
 } from "@chakra-ui/react";
 import { AppLayout } from "@/components/AppLayout";
+import { StarRating } from "@/components/StarRating";
 
 type ApiResult = {
   ok: boolean;
@@ -573,10 +574,23 @@ export default function Page() {
                           <Text fontWeight="bold">
                             {b.titel?.titel ?? "(ohne Titel)"}
                           </Text>
-                          <Text fontSize="sm" color="gray.600">
-                            ISBN: {b.isbn ?? "-"} · Rating:{" "}
-                            {String(b.rating ?? "-")} · Art: {b.art ?? "-"}
-                          </Text>
+                          <HStack
+                            fontSize="sm"
+                            color="gray.600"
+                            wrap="wrap"
+                            gap={2}
+                          >
+                            <Text>ISBN: {b.isbn ?? "-"}</Text>
+                            <Text>·</Text>
+
+                            <HStack gap={2}>
+                              <Text>Rating:</Text>
+                              <StarRating value={b.rating} />
+                            </HStack>
+
+                            <Text>·</Text>
+                            <Text>Art: {b.art ?? "-"}</Text>
+                          </HStack>
                           <Text fontSize="sm" color="gray.600">
                             Lieferbar: {String(b.lieferbar ?? "-")} · Preis:{" "}
                             {String(b.preis ?? "-")}

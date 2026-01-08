@@ -3,7 +3,8 @@
 import React from "react";
 import { useParams } from "next/navigation";
 import { useQuery } from "@apollo/client/react";
-import { Box, Heading, Stack, Text } from "@chakra-ui/react";
+import { Box, Heading, HStack, Stack, Text } from "@chakra-ui/react";
+import { StarRating } from "@/components/StarRating";
 import { AppLayout } from "@/components/AppLayout";
 import { ErrorAlert } from "@/components/ErrorAlert";
 import { BUCH_QUERY } from "@/graphql/operations";
@@ -55,7 +56,10 @@ export default function BuchDetailPage() {
             </Text>
             <Text>Untertitel: {buch.titel?.untertitel ?? "-"}</Text>
             <Text>ISBN: {buch.isbn ?? "-"}</Text>
-            <Text>Rating: {String(buch.rating ?? "-")}</Text>
+            <HStack>
+              <Text>Rating:</Text>
+              <StarRating value={buch.rating} size="20px" />
+            </HStack>
             <Text>Art: {buch.art ?? "-"}</Text>
             <Text>Preis: {String(buch.preis ?? "-")}</Text>
             <Text>Lieferbar: {String(buch.lieferbar ?? "-")}</Text>
