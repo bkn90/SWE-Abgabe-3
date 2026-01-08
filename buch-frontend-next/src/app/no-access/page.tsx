@@ -1,7 +1,15 @@
 "use client";
 
 import NextLink from "next/link";
-import { Box, Button, Container, Heading, Link, Text, VStack } from "@chakra-ui/react";
+import {
+  Box,
+  Button,
+  Container,
+  Heading,
+  Link,
+  Text,
+  VStack,
+} from "@chakra-ui/react";
 
 export default function NoAccessPage() {
   return (
@@ -18,7 +26,11 @@ export default function NoAccessPage() {
               <Button colorScheme="teal">Zurück zum Dashboard</Button>
             </Link>
 
-            <Link as={NextLink} href="/search" _hover={{ textDecoration: "none" }}>
+            <Link
+              as={NextLink}
+              href="/search"
+              _hover={{ textDecoration: "none" }}
+            >
               <Button variant="outline">Zur Suche</Button>
             </Link>
           </VStack>

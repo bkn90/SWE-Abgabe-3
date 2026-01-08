@@ -34,7 +34,7 @@ function safeParseJwtPayload(token: string): Record<string, unknown> | null {
       atob(b64)
         .split("")
         .map((c) => "%" + c.charCodeAt(0).toString(16).padStart(2, "0"))
-        .join("")
+        .join(""),
     );
 
     return JSON.parse(json) as Record<string, unknown>;
@@ -82,8 +82,22 @@ function isActivePath(pathname: string, href: string): boolean {
 function MenuIcon() {
   return (
     <Box as="span" display="inline-block" lineHeight={0}>
-      <Box as="span" display="block" w="18px" h="2px" bg="currentColor" mb="4px" />
-      <Box as="span" display="block" w="18px" h="2px" bg="currentColor" mb="4px" />
+      <Box
+        as="span"
+        display="block"
+        w="18px"
+        h="2px"
+        bg="currentColor"
+        mb="4px"
+      />
+      <Box
+        as="span"
+        display="block"
+        w="18px"
+        h="2px"
+        bg="currentColor"
+        mb="4px"
+      />
       <Box as="span" display="block" w="18px" h="2px" bg="currentColor" />
     </Box>
   );
@@ -120,7 +134,9 @@ function NavButtons({
             <Button
               w={variant === "mobile" ? "full" : undefined}
               size="sm"
-              variant={active ? "solid" : variant === "mobile" ? "outline" : "ghost"}
+              variant={
+                active ? "solid" : variant === "mobile" ? "outline" : "ghost"
+              }
               bg={active ? "teal.600" : undefined}
               color={active ? "white" : undefined}
               _hover={active ? { bg: "teal.700" } : undefined}
@@ -183,7 +199,12 @@ function BreadcrumbsBar({ crumbs }: { crumbs: Crumb[] }) {
           {i > 0 ? <Text as="span">/</Text> : null}
 
           {c.href ? (
-            <Link as={NextLink} href={c.href} color="teal.700" _hover={{ textDecoration: "underline" }}>
+            <Link
+              as={NextLink}
+              href={c.href}
+              color="teal.700"
+              _hover={{ textDecoration: "underline" }}
+            >
               {c.label}
             </Link>
           ) : (
@@ -281,7 +302,13 @@ export function AppLayout({
   return (
     <Box minH="100vh" bg="gray.50">
       {/* Sticky Topbar */}
-      <Box position="sticky" top={0} zIndex={10} bg="white" borderBottomWidth="1px">
+      <Box
+        position="sticky"
+        top={0}
+        zIndex={10}
+        bg="white"
+        borderBottomWidth="1px"
+      >
         <Container maxW="container.lg" py={3}>
           <Flex align="center" gap={3}>
             {/* Brand */}
@@ -312,7 +339,11 @@ export function AppLayout({
 
             {/* Mobile Hamburger */}
             <Box display={{ base: "block", md: "none" }} ms="auto">
-              <IconButton aria-label="Menü öffnen" variant="outline" onClick={() => setMenuOpen(true)}>
+              <IconButton
+                aria-label="Menü öffnen"
+                variant="outline"
+                onClick={() => setMenuOpen(true)}
+              >
                 <MenuIcon />
               </IconButton>
             </Box>
@@ -321,7 +352,11 @@ export function AppLayout({
       </Box>
 
       {/* Mobile Drawer */}
-      <Drawer.Root open={menuOpen} onOpenChange={(e) => setMenuOpen(e.open)} placement="end">
+      <Drawer.Root
+        open={menuOpen}
+        onOpenChange={(e) => setMenuOpen(e.open)}
+        placement="end"
+      >
         <Drawer.Backdrop />
         <Drawer.Positioner>
           <Drawer.Content>

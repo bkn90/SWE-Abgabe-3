@@ -22,19 +22,20 @@ export function makeApolloClient() {
   });
 
   const authLink = new SetContextLink((prevContext) => {
-  const token =
-    typeof window === "undefined" ? null : localStorage.getItem("access_token");
+    const token =
+      typeof window === "undefined"
+        ? null
+        : localStorage.getItem("access_token");
 
-  const prevHeaders =
-    (prevContext.headers as Record<string, string>) ?? {};
+    const prevHeaders = (prevContext.headers as Record<string, string>) ?? {};
 
-  return {
-    headers: {
-      ...prevHeaders,
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-  };
-});
+    return {
+      headers: {
+        ...prevHeaders,
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    };
+  });
 
   // NEW: ErrorLink statt onError()
   const errorLink = new ErrorLink((args) => {

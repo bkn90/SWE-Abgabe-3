@@ -59,7 +59,7 @@ function safeParseJwt(token: string): Record<string, unknown> | null {
       atob(b64)
         .split("")
         .map((c) => "%" + c.charCodeAt(0).toString(16).padStart(2, "0"))
-        .join("")
+        .join(""),
     );
 
     return JSON.parse(json) as Record<string, unknown>;
@@ -76,7 +76,8 @@ function extractRoles(payload: Record<string, unknown> | null): string[] {
   const realmAccess = payload["realm_access"];
   if (realmAccess && typeof realmAccess === "object") {
     const r = (realmAccess as Record<string, unknown>)["roles"];
-    if (Array.isArray(r)) roles.push(...r.filter((x): x is string => typeof x === "string"));
+    if (Array.isArray(r))
+      roles.push(...r.filter((x): x is string => typeof x === "string"));
   }
 
   const resourceAccess = payload["resource_access"];
@@ -85,7 +86,8 @@ function extractRoles(payload: Record<string, unknown> | null): string[] {
     const nestClient = ra["nest-client"];
     if (nestClient && typeof nestClient === "object") {
       const r = (nestClient as Record<string, unknown>)["roles"];
-      if (Array.isArray(r)) roles.push(...r.filter((x): x is string => typeof x === "string"));
+      if (Array.isArray(r))
+        roles.push(...r.filter((x): x is string => typeof x === "string"));
     }
   }
 
@@ -132,7 +134,10 @@ function PrettyResult({ result }: { result: ApiResult | null }) {
             (HTTP {result.status || "?"})
           </Text>
         </Text>
-        <StatusBadge label={ok ? "Success" : "Error"} tone={ok ? "green" : "red"} />
+        <StatusBadge
+          label={ok ? "Success" : "Error"}
+          tone={ok ? "green" : "red"}
+        />
       </HStack>
 
       <Text mt={2} fontSize="sm" color="gray.700">
@@ -161,26 +166,45 @@ export default function Page() {
   const isAdmin = roles.includes("admin");
 
   const username =
-    (payload && typeof payload["preferred_username"] === "string" && (payload["preferred_username"] as string)) ||
-    (payload && typeof payload["name"] === "string" && (payload["name"] as string)) ||
+    (payload &&
+      typeof payload["preferred_username"] === "string" &&
+      (payload["preferred_username"] as string)) ||
+    (payload &&
+      typeof payload["name"] === "string" &&
+      (payload["name"] as string)) ||
     null;
 
-  const exp = payload && typeof payload["exp"] === "number" ? (payload["exp"] as number) : null;
+  const exp =
+    payload && typeof payload["exp"] === "number"
+      ? (payload["exp"] as number)
+      : null;
 
   const tokenMeta = useMemo(() => {
     if (!token) {
-      return { badge: <StatusBadge label="Nicht eingeloggt" tone="red" />, detail: "Bitte einloggen." };
+      return {
+        badge: <StatusBadge label="Nicht eingeloggt" tone="red" />,
+        detail: "Bitte einloggen.",
+      };
     }
     if (!exp) {
-      return { badge: <StatusBadge label="Token vorhanden" tone="orange" />, detail: "Ablaufdatum (exp) nicht gefunden." };
+      return {
+        badge: <StatusBadge label="Token vorhanden" tone="orange" />,
+        detail: "Ablaufdatum (exp) nicht gefunden.",
+      };
     }
     const now = Math.floor(Date.now() / 1000);
     const remaining = exp - now;
     if (remaining <= 0) {
-      return { badge: <StatusBadge label="Token abgelaufen" tone="red" />, detail: "Bitte neu einloggen." };
+      return {
+        badge: <StatusBadge label="Token abgelaufen" tone="red" />,
+        detail: "Bitte neu einloggen.",
+      };
     }
     const mins = Math.floor(remaining / 60);
-    return { badge: <StatusBadge label="Eingeloggt" tone="green" />, detail: `Token gültig (noch ca. ${mins} min).` };
+    return {
+      badge: <StatusBadge label="Eingeloggt" tone="green" />,
+      detail: `Token gültig (noch ca. ${mins} min).`,
+    };
   }, [token, exp]);
 
   // Admin tools state
@@ -195,7 +219,8 @@ export default function Page() {
   const [loadingLatest, setLoadingLatest] = useState(false);
 
   useEffect(() => {
-    const t = localStorage.getItem("access_token") ?? localStorage.getItem("token");
+    const t =
+      localStorage.getItem("access_token") ?? localStorage.getItem("token");
     setToken(t);
   }, []);
 
@@ -266,7 +291,8 @@ export default function Page() {
       const json = (await r.json()) as LatestQueryResponse;
 
       if (!r.ok || (json.errors && json.errors.length > 0)) {
-        const msg = json.errors?.[0]?.message ?? `HTTP ${r.status} beim Laden der Bücher`;
+        const msg =
+          json.errors?.[0]?.message ?? `HTTP ${r.status} beim Laden der Bücher`;
         setLatestErr(String(msg));
         return;
       }
@@ -293,8 +319,17 @@ export default function Page() {
     <AppLayout title="Dashboard">
       <Stack gap={6}>
         {/* Hero / Status */}
-        <Box borderWidth="1px" borderRadius="xl" bg="white" p={{ base: 4, md: 6 }}>
-          <Grid templateColumns={{ base: "1fr", md: "1.2fr 0.8fr" }} gap={6} alignItems="center">
+        <Box
+          borderWidth="1px"
+          borderRadius="xl"
+          bg="white"
+          p={{ base: 4, md: 6 }}
+        >
+          <Grid
+            templateColumns={{ base: "1fr", md: "1.2fr 0.8fr" }}
+            gap={6}
+            alignItems="center"
+          >
             <Box>
               <Heading size="lg">Buch Frontend</Heading>
               <Text mt={2} color="gray.600">
@@ -303,7 +338,11 @@ export default function Page() {
 
               <HStack mt={4} gap={2} wrap="wrap">
                 {tokenMeta.badge}
-                {isAdmin ? <StatusBadge label="Admin" tone="purple" /> : <StatusBadge label="User" tone="blue" />}
+                {isAdmin ? (
+                  <StatusBadge label="Admin" tone="purple" />
+                ) : (
+                  <StatusBadge label="User" tone="blue" />
+                )}
                 {username ? (
                   <Text fontSize="sm" color="gray.600">
                     Angemeldet als {username}.
@@ -321,7 +360,8 @@ export default function Page() {
                   <Alert.Content>
                     <Alert.Title>Hinweis</Alert.Title>
                     <Alert.Description>
-                      Du bist nicht eingeloggt. Manche Funktionen (GraphQL / Admin) könnten fehlschlagen.
+                      Du bist nicht eingeloggt. Manche Funktionen (GraphQL /
+                      Admin) könnten fehlschlagen.
                     </Alert.Description>
                   </Alert.Content>
                 </Alert.Root>
@@ -330,13 +370,27 @@ export default function Page() {
 
             <Box>
               <Stack gap={3}>
-                <Link as={NextLink} href="/search" _hover={{ textDecoration: "none" }}>
-                  <Button w="full" size="lg" bg="teal.600" color="white" _hover={{ bg: "teal.700" }}>
+                <Link
+                  as={NextLink}
+                  href="/search"
+                  _hover={{ textDecoration: "none" }}
+                >
+                  <Button
+                    w="full"
+                    size="lg"
+                    bg="teal.600"
+                    color="white"
+                    _hover={{ bg: "teal.700" }}
+                  >
                     Zur Suche
                   </Button>
                 </Link>
 
-                <Link as={NextLink} href="/items/new" _hover={{ textDecoration: "none" }}>
+                <Link
+                  as={NextLink}
+                  href="/items/new"
+                  _hover={{ textDecoration: "none" }}
+                >
                   <Button
                     w="full"
                     variant="outline"
@@ -420,7 +474,11 @@ export default function Page() {
               <Box borderWidth="1px" borderRadius="xl" bg="white" p={5}>
                 <HStack justify="space-between" mb={3} wrap="wrap" gap={2}>
                   <Heading size="sm">Backend Health</Heading>
-                  <Button onClick={() => void loadHealth()} size="sm" loading={loadingHealth}>
+                  <Button
+                    onClick={() => void loadHealth()}
+                    size="sm"
+                    loading={loadingHealth}
+                  >
                     Prüfen
                   </Button>
                 </HStack>
@@ -438,7 +496,11 @@ export default function Page() {
               <Box borderWidth="1px" borderRadius="xl" bg="white" p={5}>
                 <HStack justify="space-between" mb={3} wrap="wrap" gap={2}>
                   <Heading size="sm">Buch-Count</Heading>
-                  <Button onClick={() => void loadCount()} size="sm" loading={loadingCount}>
+                  <Button
+                    onClick={() => void loadCount()}
+                    size="sm"
+                    loading={loadingCount}
+                  >
                     Laden
                   </Button>
                 </HStack>
@@ -453,10 +515,21 @@ export default function Page() {
                 </Skeleton>
               </Box>
 
-              <Box borderWidth="1px" borderRadius="xl" bg="white" p={5} gridColumn={{ base: "auto", md: "1 / -1" }}>
+              <Box
+                borderWidth="1px"
+                borderRadius="xl"
+                bg="white"
+                p={5}
+                gridColumn={{ base: "auto", md: "1 / -1" }}
+              >
                 <HStack justify="space-between" mb={3} wrap="wrap" gap={2}>
                   <Heading size="sm">Bücher (Top 5)</Heading>
-                  <Button onClick={() => void loadLatest()} size="sm" variant="outline" loading={loadingLatest}>
+                  <Button
+                    onClick={() => void loadLatest()}
+                    size="sm"
+                    variant="outline"
+                    loading={loadingLatest}
+                  >
                     Neu laden
                   </Button>
                 </HStack>
@@ -464,7 +537,12 @@ export default function Page() {
                 {loadingLatest ? (
                   <Stack gap={3}>
                     {Array.from({ length: 4 }).map((_, i) => (
-                      <Skeleton key={i} height="64px" borderRadius="md" loading />
+                      <Skeleton
+                        key={i}
+                        height="64px"
+                        borderRadius="md"
+                        loading
+                      />
                     ))}
                   </Stack>
                 ) : latestErr ? (
@@ -492,16 +570,24 @@ export default function Page() {
                         gap={4}
                       >
                         <Box>
-                          <Text fontWeight="bold">{b.titel?.titel ?? "(ohne Titel)"}</Text>
-                          <Text fontSize="sm" color="gray.600">
-                            ISBN: {b.isbn ?? "-"} · Rating: {String(b.rating ?? "-")} · Art: {b.art ?? "-"}
+                          <Text fontWeight="bold">
+                            {b.titel?.titel ?? "(ohne Titel)"}
                           </Text>
                           <Text fontSize="sm" color="gray.600">
-                            Lieferbar: {String(b.lieferbar ?? "-")} · Preis: {String(b.preis ?? "-")}
+                            ISBN: {b.isbn ?? "-"} · Rating:{" "}
+                            {String(b.rating ?? "-")} · Art: {b.art ?? "-"}
+                          </Text>
+                          <Text fontSize="sm" color="gray.600">
+                            Lieferbar: {String(b.lieferbar ?? "-")} · Preis:{" "}
+                            {String(b.preis ?? "-")}
                           </Text>
                         </Box>
 
-                        <Link as={NextLink} href={`/items/${b.id}`} _hover={{ textDecoration: "none" }}>
+                        <Link
+                          as={NextLink}
+                          href={`/items/${b.id}`}
+                          _hover={{ textDecoration: "none" }}
+                        >
                           <Button size="sm" variant="outline">
                             Details
                           </Button>

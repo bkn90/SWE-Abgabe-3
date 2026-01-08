@@ -22,14 +22,15 @@ export async function GET(req: Request) {
   if (!baseUrl) {
     return NextResponse.json(
       { ok: false, status: 500, body: "API_BASE_URL fehlt" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 
   // Auth weitergeben (wenn vorhanden)
   const authFromReq = req.headers.get("authorization");
   const cookieToken = (await cookies()).get("access_token")?.value;
-  const auth = authFromReq ?? (cookieToken ? `Bearer ${cookieToken}` : undefined);
+  const auth =
+    authFromReq ?? (cookieToken ? `Bearer ${cookieToken}` : undefined);
 
   // Query: hol nur IDs (klein) und zähle im Frontend
   const query = /* GraphQL */ `
@@ -56,7 +57,10 @@ export async function GET(req: Request) {
 
   // Wenn GraphQL Errors -> direkt zurück
   if (!res.ok) {
-    return NextResponse.json({ ok: false, status: res.status, body }, { status: 200 });
+    return NextResponse.json(
+      { ok: false, status: res.status, body },
+      { status: 200 },
+    );
   }
 
   // Erwartet: { data: { buecher: [{id}, ...] } }
@@ -65,6 +69,6 @@ export async function GET(req: Request) {
 
   return NextResponse.json(
     { ok: true, status: res.status, body: { count, raw: body } },
-    { status: 200 }
+    { status: 200 },
   );
 }

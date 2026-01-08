@@ -3,8 +3,7 @@ export type TokenResponse = {
   refresh_token?: string;
 };
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:3001";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:3001";
 
 export async function login(username: string, password: string) {
   const res = await fetch(`${API_BASE}/api/auth/token`, {
@@ -17,7 +16,7 @@ export async function login(username: string, password: string) {
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     throw new Error(
-      `Login fehlgeschlagen (${res.status}): ${text || res.statusText}`
+      `Login fehlgeschlagen (${res.status}): ${text || res.statusText}`,
     );
   }
 
@@ -28,7 +27,8 @@ export async function login(username: string, password: string) {
   }
 
   localStorage.setItem("access_token", data.access_token);
-  if (data.refresh_token) localStorage.setItem("refresh_token", data.refresh_token);
+  if (data.refresh_token)
+    localStorage.setItem("refresh_token", data.refresh_token);
 
   return data;
 }

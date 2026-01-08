@@ -10,7 +10,10 @@ const insecureDispatcher = new Agent({
 export async function POST(req: Request) {
   const baseUrl = process.env.API_BASE_URL;
   if (!baseUrl) {
-    return NextResponse.json({ ok: false, error: "API_BASE_URL fehlt" }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: "API_BASE_URL fehlt" },
+      { status: 500 },
+    );
   }
 
   const url = `${baseUrl}/rest`;
@@ -39,12 +42,12 @@ export async function POST(req: Request) {
 
     return NextResponse.json(
       { ok: r.ok, status: r.status, url, body: safeJson(text), raw: text },
-      { status: r.ok ? 200 : r.status }
+      { status: r.ok ? 200 : r.status },
     );
   } catch (e: unknown) {
     return NextResponse.json(
       { ok: false, status: 500, url, error: getErrorMessage(e) },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
