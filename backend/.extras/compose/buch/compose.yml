@@ -57,13 +57,17 @@ services:
         target: 3000
     volumes:
       - type: bind
+        source: app.yml
+        target: /opt/app/dist/config/resources/app.yml
+        read_only: true
+      - type: bind
         source: app.toml
         target: /opt/app/dist/config/resources/app.toml
         read_only: true
       - type: bind
-        source: ../../../log
-        target: /tmp/log
-        read_only: true
+        source: ../../../Backend/log
+        target: /opt/app/log
+        read_only: false
       - type: bind
         source: ../../../src/config/resources/tls/key.pem
         target: /opt/app/dist/config/resources/tls/key.pem
