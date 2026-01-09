@@ -6,7 +6,9 @@ export class SearchPage {
 
   async goto() {
     await this.page.goto("/search");
-    await expect(this.page.getByRole("heading", { name: /suche/i })).toBeVisible();
+    await expect(
+      this.page.getByRole("heading", { name: /suche/i }),
+    ).toBeVisible();
   }
 
   async search(text: string) {
@@ -29,9 +31,7 @@ export class SearchPage {
   async openFirstResult() {
     // NICHT einfach "link.first()" (das trifft sonst Home/Suche/Neu/Logout)
     // Erstmal: nimm den ersten Link im Hauptbereich unterhalb der Überschrift.
-    const mainLinks = this.page
-      .locator("main")
-      .getByRole("link");
+    const mainLinks = this.page.locator("main").getByRole("link");
 
     if (await mainLinks.count()) {
       await mainLinks.first().click();

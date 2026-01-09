@@ -14,12 +14,12 @@ export default function BuchDetailPage() {
 
   useEffect(() => {
     fetch(`/api/buecher/${id}`)
-      .then(res => {
+      .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
       })
       .then(setBuch)
-      .catch(e => setError(e.message))
+      .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, [id]);
 

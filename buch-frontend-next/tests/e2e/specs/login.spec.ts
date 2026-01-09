@@ -13,13 +13,13 @@ test.describe("Login", () => {
     // await expect(page.getByText(/eingeloggt/i)).toBeVisible();
   });
 
-    test("Login mit falschen Daten schlägt fehl", async ({ page, loginPage }) => {
-        await loginPage.goto();
-        await loginPage.login("admin", "falsch");
+  test("Login mit falschen Daten schlägt fehl", async ({ page, loginPage }) => {
+    await loginPage.goto();
+    await loginPage.login("admin", "falsch");
 
-        await expect(page.getByText("Fehler")).toBeVisible();
-        await expect(
-            page.getByText(/Login fehlgeschlagen \(401\): Unauthorized/i),
-        ).toBeVisible();
-    });
+    await expect(page.getByText("Fehler")).toBeVisible();
+    await expect(
+      page.getByText(/Login fehlgeschlagen \(401\): Unauthorized/i),
+    ).toBeVisible();
+  });
 });

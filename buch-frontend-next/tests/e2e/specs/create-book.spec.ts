@@ -6,7 +6,7 @@ test("Admin kann Buch anlegen", async ({ newBookPage }) => {
   await newBookPage.createBook({
     titel: "Playwright Buch",
     untertitel: "E2E Tests sauber aufgebaut",
-    isbn: "978-1-4028-9462-6",     // andere ISBN als Beispiel ✅
+    isbn: "978-1-4028-9462-6", // andere ISBN als Beispiel ✅
     art: "EPUB",
     rating: 4,
     preis: "19.99",

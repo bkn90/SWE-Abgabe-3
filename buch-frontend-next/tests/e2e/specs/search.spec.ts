@@ -10,6 +10,6 @@ test("Suche zeigt Ergebnisse", async ({ searchPage }) => {
     // hier nur Beispiel:
     // page.getByText(/Alice/i)
     // -> besser: data-testid
-    (searchPage as any).page?.getByText?.(/Alice/i) // wenn du es strikt willst: method in PageObject ergänzen
+    (searchPage as any).page?.getByText?.(/Alice/i), // wenn du es strikt willst: method in PageObject ergänzen
   ).toBeTruthy();
 });
