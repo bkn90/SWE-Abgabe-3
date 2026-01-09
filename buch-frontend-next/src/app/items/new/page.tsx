@@ -447,7 +447,7 @@ export default function NewBookPage() {
                   loading={creating}
                   disabled={!titel.trim()}
                 >
-                  Buch anlegen (GraphQL)
+                  Buch anlegen
                 </Button>
 
                 <Link

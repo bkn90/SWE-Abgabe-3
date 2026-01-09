@@ -282,7 +282,7 @@ export function AppLayout({
   }
 
   return (
-    <Box minH="100vh" bg="gray.50">
+    <Box minH="100vh" bg="gray.50" overflowX="hidden">
       <Box
         position="sticky"
         top={0}
