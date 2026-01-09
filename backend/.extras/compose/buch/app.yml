@@ -34,8 +34,8 @@ db:
 # Client-ID muss durch die Umgebungsvariable CLIENT_ID gesetzt werden
 keycloak:
   #schema: http
-  host: keycloak
-  port: 8443
+  #host: keycloak
+  #port: 8080
   #realm: nest
   # siehe Keycloak Menuepunkt "Clients" > Tab "Clients list" > Spalte "Client ID"
   #clientId: nest-client
