@@ -632,6 +632,60 @@ export default function Page() {
             </Stack>
           </>
         ) : null}
+        {/* Feature-Übersicht (User) */}
+        <Box>
+          <Heading size="sm" mb={3}>
+            Was kannst du hier tun?
+          </Heading>
+
+          <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>
+            <Box borderWidth="1px" borderRadius="xl" bg="white" p={4}>
+              <Text fontWeight="medium">🔍 Bücher suchen</Text>
+              <Text fontSize="sm" color="gray.600">
+                Suche nach Titel, ISBN, Bewertung, Preis und Verfügbarkeit.
+              </Text>
+            </Box>
+
+            <Box borderWidth="1px" borderRadius="xl" bg="white" p={4}>
+              <Text fontWeight="medium">📖 Buchdetails ansehen</Text>
+              <Text fontSize="sm" color="gray.600">
+                Detailansicht mit Bewertung, Preis und weiteren Informationen.
+              </Text>
+            </Box>
+          </SimpleGrid>
+        </Box>
+
+        {/* Feature-Übersicht (Admin) */}
+        {isAdmin && (
+          <Box>
+            <Heading size="sm" mb={3}>
+              Admin-Funktionen
+            </Heading>
+
+            <SimpleGrid columns={{ base: 1, md: 3 }} gap={4}>
+              <Box borderWidth="1px" borderRadius="xl" bg="white" p={4}>
+                <Text fontWeight="medium">➕ Bücher anlegen</Text>
+                <Text fontSize="sm" color="gray.600">
+                  Neue Bücher mit Validierung erstellen.
+                </Text>
+              </Box>
+            </SimpleGrid>
+          </Box>
+        )}
+
+        {/* Footer (alle) */}
+        <Box pt={8}>
+          <Separator mb={4} />
+          <Text fontSize="sm" color="gray.500" textAlign="center">
+            SWE Abgabe · Buchverwaltung · Next.js · GraphQL · Chakra UI
+          </Text>
+
+          {isAdmin && (
+            <Text fontSize="xs" color="gray.400" textAlign="center" mt={1}>
+              Admin-Modus aktiv
+            </Text>
+          )}
+        </Box>
       </Stack>
     </AppLayout>
   );
