@@ -48,7 +48,12 @@ export default function BuchDetailPage() {
         {!loading && !error && !buch && <Text>Nicht gefunden.</Text>}
 
         {buch && (
-          <Box borderWidth="1px" borderRadius="xl" bg="white" p={{ base: 4, md: 6 }}>
+          <Box
+            borderWidth="1px"
+            borderRadius="xl"
+            bg="white"
+            p={{ base: 4, md: 6 }}
+          >
             <Stack gap={3}>
               <Text fontWeight="bold" fontSize="lg">
                 {buch.titel?.titel ?? "(ohne Titel)"}
